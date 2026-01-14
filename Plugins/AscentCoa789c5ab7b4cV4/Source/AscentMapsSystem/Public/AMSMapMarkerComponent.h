@@ -190,7 +190,7 @@ public:
      * @return True if it should be displayed, false otherwise.
      */
     UFUNCTION(BlueprintPure, Category = AMS)
-    bool ShowOnCompass() const { return GetTracked(); }
+    bool ShowOnCompass() const ;
 
     /**
      * Sets whether the marker should rotate.

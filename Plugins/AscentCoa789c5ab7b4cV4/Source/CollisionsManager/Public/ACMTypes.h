@@ -171,7 +171,7 @@ public:
     FTransform RelativeOffset;
 
 private:
-    UPROPERTY()
+    UPROPERTY(Meta = (IgnoreForMemberInitializationTest))
     FGuid Guid = FGuid();
 };
 

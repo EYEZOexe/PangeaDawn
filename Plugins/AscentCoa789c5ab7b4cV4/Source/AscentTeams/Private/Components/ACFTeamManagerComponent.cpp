@@ -9,80 +9,89 @@
 
 UACFTeamManagerComponent::UACFTeamManagerComponent()
 {
-    PrimaryComponentTick.bCanEverTick = false;
-    SetIsReplicatedByDefault(true);
+	PrimaryComponentTick.bCanEverTick = false;
+	SetIsReplicatedByDefault(true);
 }
 
 void UACFTeamManagerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    
-    DOREPLIFETIME(UACFTeamManagerComponent, bFriendlyFireEnabled);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UACFTeamManagerComponent, bFriendlyFireEnabled);
 }
 
 void UACFTeamManagerComponent::SetFriendlyFireEnabled(bool bEnabled)
 {
-    if (!GetOwner()->HasAuthority())
-    {
-        return;
-    }
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
 
-    if (bFriendlyFireEnabled != bEnabled)
-    {
-        bFriendlyFireEnabled = bEnabled;
-        OnFriendlyFireChanged.Broadcast(bFriendlyFireEnabled);
-    }
+	if (bFriendlyFireEnabled != bEnabled)
+	{
+		bFriendlyFireEnabled = bEnabled;
+		OnFriendlyFireChanged.Broadcast(bFriendlyFireEnabled);
+	}
 }
 
 void UACFTeamManagerComponent::SetBattleType(EBattleType NewBattleType)
 {
-    if (!GetOwner()->HasAuthority())
-    {
-        return;
-    }
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
 
-    if (CurrentBattleType != NewBattleType)
-    {
-        CurrentBattleType = NewBattleType;
-        OnBattleTypeChanged.Broadcast(CurrentBattleType);
-    }
+	if (CurrentBattleType != NewBattleType)
+	{
+		CurrentBattleType = NewBattleType;
+		OnBattleTypeChanged.Broadcast(CurrentBattleType);
+
+		// Notify subsystem
+		if (UWorld* World = GetWorld())
+		{
+			if (UACFTeamManagerSubsystem* TeamSubsystem = World->GetSubsystem<UACFTeamManagerSubsystem>())
+			{
+				TeamSubsystem->NotifyBattleTypeChanged(CurrentBattleType);
+			}
+		}
+	}
 }
 
 void UACFTeamManagerComponent::OnRep_BattleType()
 {
-    OnBattleTypeChanged.Broadcast(CurrentBattleType);
-      // Notify subsystem
-    if (UWorld* World = GetWorld())
-    {
-        if (UACFTeamManagerSubsystem* TeamSubsystem = World->GetSubsystem<UACFTeamManagerSubsystem>())
-        {
-            TeamSubsystem->NotifyBattleTypeChanged(CurrentBattleType);
-        }
-    }
+	OnBattleTypeChanged.Broadcast(CurrentBattleType);
+	// Notify subsystem
+	if (UWorld* World = GetWorld())
+	{
+		if (UACFTeamManagerSubsystem* TeamSubsystem = World->GetSubsystem<UACFTeamManagerSubsystem>())
+		{
+			TeamSubsystem->NotifyBattleTypeChanged(CurrentBattleType);
+		}
+	}
 }
 
 void UACFTeamManagerComponent::SetTeamConfigDataAsset(UACFTeamsConfigDataAsset* InTeamConfig)
 {
-    if (!GetOwner()->HasAuthority())
-    {
-        return;
-    }
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
 
-    TeamConfigDataAsset = InTeamConfig;
+	TeamConfigDataAsset = InTeamConfig;
 }
 
 
 
 void UACFTeamManagerComponent::OnRep_FriendlyFireEnabled()
 {
-    OnFriendlyFireChanged.Broadcast(bFriendlyFireEnabled);
-    
-    // Notify subsystem
-    if (UWorld* World = GetWorld())
-    {
-        if (UACFTeamManagerSubsystem* TeamSubsystem = World->GetSubsystem<UACFTeamManagerSubsystem>())
-        {
-            TeamSubsystem->NotifyFriendlyFireChanged(bFriendlyFireEnabled);
-        }
-    }
+	OnFriendlyFireChanged.Broadcast(bFriendlyFireEnabled);
+
+	// Notify subsystem
+	if (UWorld* World = GetWorld())
+	{
+		if (UACFTeamManagerSubsystem* TeamSubsystem = World->GetSubsystem<UACFTeamManagerSubsystem>())
+		{
+			TeamSubsystem->NotifyFriendlyFireChanged(bFriendlyFireEnabled);
+		}
+	}
 }

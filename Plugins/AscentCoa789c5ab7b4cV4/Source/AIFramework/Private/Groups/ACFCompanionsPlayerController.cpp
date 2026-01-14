@@ -1,4 +1,4 @@
-   // Copyright (C) Developed by Pask, Published by Dark Tower Interactive SRL 2024. All Rights Reserved. 
+// Copyright (C) Developed by Pask, Published by Dark Tower Interactive SRL 2024. All Rights Reserved. 
 
 #include "Groups/ACFCompanionsPlayerController.h"
 #include "Components/ACFCompanionGroupAIComponent.h"
@@ -22,14 +22,14 @@ void AACFCompanionsPlayerController::BeginPlay()
 void AACFCompanionsPlayerController::SwitchToNearestCompanion(float blendTime /*= 0.5f */)
 {
 	if (!CompanionsComponent || !PossessedCharacter)
-		return ;
+		return;
 
 	class AACFCharacter* companion = CompanionsComponent->GetAgentNearestTo(PossessedCharacter->GetActorLocation());
 
 	if (!companion) {
 		return;
 	}
-		
+
 	SwitchPossessionToCharacer(companion, blendTime);
 }
 
@@ -37,13 +37,13 @@ void AACFCompanionsPlayerController::SwitchToNearestCompanion(float blendTime /*
 
 void AACFCompanionsPlayerController::SwitchPossessionToCharacer_Implementation(class AACFCharacter* inCharacter, float blendTime /*= 0.5f */)
 {
-	if (!CompanionsComponent || !PossessedEntity)
+	if (!CompanionsComponent || !PossessedEntity) {
 		return;
+	}
 
 	AACFCharacter* oldPossessedChar = Cast< AACFCharacter>(PossessedEntity);
 	if (oldPossessedChar) {
 		Internal_SwitchPossessionTo(inCharacter);
-		SetViewTarget(oldPossessedChar);
 		SetViewTargetWithBlend(oldPossessedChar, blendTime);
 	}
 }
@@ -71,12 +71,10 @@ void AACFCompanionsPlayerController::Internal_SwitchPossessionTo(AACFCharacter* 
 	inCharacter->GetController()->Destroy(true);
 	AACFCharacter* oldPossessedChar = Cast<AACFCharacter>(GetPawn());
 
-	Possess(inCharacter);	
-	if (oldPossessedChar)
-	{
+	Possess(inCharacter);
+	if (oldPossessedChar) {
 		oldPossessedChar->SpawnDefaultController();
 		CompanionsComponent->AddExistingCharacterToGroup(oldPossessedChar);
 	}
-
 }
 

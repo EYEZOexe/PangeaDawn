@@ -31,61 +31,60 @@ void UACFThreatManagerComponent::UpdateMaxThreat()
     }
 }
 
-void UACFThreatManagerComponent::AddThreat(AActor* threatening, float threat)
+void UACFThreatManagerComponent::AddThreat(AActor* threatening, float ThreatToAdd)
 {
-    if (!threatening) {
+    if (!threatening || threatening == GetOwner() || ThreatToAdd <= 0.f) {
         return;
     }
 
-    if (threatening == GetOwner()) {
+    if (!Cast<IACFEntityInterface>(threatening)) {
         return;
     }
 
-    if (threat <= 0) {
-        return;
-    }
-
-    IACFEntityInterface* entity = Cast<IACFEntityInterface>(threatening);
-    if (!entity) {
-        return;
-    }
-
-    if (IACFEntityInterface::Execute_IsEntityAlive(threatening)) {
-        if (ThreatMap.Contains(threatening)) {
-            threat += ThreatMap.FindAndRemoveChecked(threatening) * GetThreatMultForActor(threatening);
-        }
-        const float threatMult = ThreatMap.Add(threatening, threat);
-        UpdateMaxThreat();
-    } else {
+    if (!IACFEntityInterface::Execute_IsEntityAlive(threatening)) {
         RemoveThreatening(threatening);
+        return;
     }
+
+    const float CurrentThreat = ThreatMap.Contains(threatening) ? ThreatMap[threatening] : 0.f;
+    const float ThreatMult = GetThreatMultForActor(threatening);
+
+    const float NewThreat = CurrentThreat + (ThreatToAdd * ThreatMult);
+    ThreatMap.Add(threatening, NewThreat);
+
+    UpdateMaxThreat();
 }
 
-void UACFThreatManagerComponent::RemoveThreat(class AActor* threatening, float threat)
+void UACFThreatManagerComponent::RemoveThreat(AActor* threatening, float ThreatToRemove)
 {
-    if (!threatening) {
+    if (!threatening || ThreatToRemove <= 0.f) {
         return;
     }
 
-    IACFEntityInterface* entity = Cast<IACFEntityInterface>(threatening);
-    if (!entity) {
+    if (!Cast<IACFEntityInterface>(threatening)) {
         return;
     }
 
-    if (IACFEntityInterface::Execute_IsEntityAlive(threatening)) {
-        if (ThreatMap.Contains(threatening)) {
-            threat -= ThreatMap.FindAndRemoveChecked(threatening);
-
-            if (threat >= 0) {
-                ThreatMap.Add(threatening, threat);
-                UpdateMaxThreat();
-            }
-        }
-    } else {
+    if (!IACFEntityInterface::Execute_IsEntityAlive(threatening)) {
         RemoveThreatening(threatening);
+        return;
     }
-}
 
+    if (!ThreatMap.Contains(threatening)) {
+        return;
+    }
+
+    const float CurrentThreat = ThreatMap[threatening];
+    const float NewThreat = CurrentThreat - ThreatToRemove;
+
+    if (NewThreat > 0.f) {
+        ThreatMap.Add(threatening, NewThreat);
+    } else {
+        ThreatMap.Remove(threatening);
+    }
+
+    UpdateMaxThreat();
+}
 class AActor* UACFThreatManagerComponent::GetActorWithHigherThreat()
 {
     float maxThreat = -1.f;

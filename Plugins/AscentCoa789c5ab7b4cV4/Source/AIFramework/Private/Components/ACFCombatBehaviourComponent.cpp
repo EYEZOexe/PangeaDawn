@@ -14,45 +14,107 @@
 #include <GameFramework/GameStateBase.h>
 #include <Kismet/GameplayStatics.h>
 #include <Logging.h>
+#include "ACFBaseAIController.h"
+#include "Components/ACFAbilitySystemComponent.h"
+
+
 
 UACFCombatBehaviourComponent::UACFCombatBehaviourComponent()
 {
 }
 
+bool UACFCombatBehaviourComponent::TryGetBestConditionalAction(FActionChances& outAction) {
+
+	if (!CombatBehaviour) {
+		UE_LOG(ACFAILog, Error, TEXT("No Combat Behavior found! - UACFCombatBehaviourComponent"));
+		return false;
+	}
+
+	TArray<float> weights;
+	TArray<FActionChances> executableActions;
+	for (const FConditions& actionCond : CombatBehaviour->ActionByCondition) {
+		const FActionChances action = actionCond;
+		if (actionCond.ActionTag == FGameplayTag() || (VerifyCondition(actionCond) && UACFFunctionLibrary::ShouldExecuteAction(action, pawnOwner))) {
+			executableActions.Add(actionCond);
+			weights.Add(actionCond.Weight);
+		}
+	}
+	const int32 index = UACFFunctionLibrary::ExtractIndexWithProbability(weights);
+	if (executableActions.IsValidIndex(index)) {
+		outAction = executableActions[index];
+		return true;
+	}
+	return false;
+}
+
+void UACFCombatBehaviourComponent::InitBehavior(AACFBaseAIController* controller)
+{
+	if (!controller) {
+		UE_LOG(ACFAILog, Error, TEXT("No controller for combat behaviour! - UACFCombatBehaviourComponent::InitBehavior"));
+		return;
+	}
+	aiController = Cast<AACFAIController>(controller);
+	pawnOwner = Cast<AACFCharacter>(controller->GetPawn());
+	if (!pawnOwner) {
+		UE_LOG(ACFAILog, Error, TEXT("No ACFCharacter for combat behaviour! - UACFCombatBehaviourComponent::InitBehavior"));
+		return;
+	}
+	InternalCombatBehaviour = Cast<UACFCombatBehaviorDataAsset>(CombatBehaviour);
+	moventComp = pawnOwner->GetACFCharacterMovementComponent();
+	abilityComp = pawnOwner->FindComponentByClass<UACFAbilitySystemComponent>();
+	if (moventComp && abilityComp) {
+		moventComp->ResetStrafeMovement();
+		abilityComp->TriggerAction(EngagingAction, EActionPriority::EHigh);
+	} else {
+		UE_LOG(ACFAILog, Error, TEXT("No Movement or Ability Component found for combat behaviour! - UACFCombatBehaviourComponent::InitBehavior"));
+	}
+	if (CheckEquipment()) {
+		TryEquipWeapon();
+	}
+}
+
+
 bool UACFCombatBehaviourComponent::TryExecuteActionByCombatState(EAICombatState combatState)
 {
-    if (!CombatBehaviour) {
-        return false;
-    }
-    if (CheckEquipment()) {
-        TryEquipWeapon();
-        return false;
-    }
+	if (!InternalCombatBehaviour) {
+		return false;
+	}
+	if (CheckEquipment()) {
+		TryEquipWeapon();
+		return false;
+	}
 
-    FActionsChances* actions = CombatBehaviour->ActionByCombatState.Find(combatState);
-    if (actions) {
-        TArray<float> weights;
-        TArray<FActionChances> executableActions;
-        for (const auto& elem : actions->PossibleActions) {
-            if (elem.ActionTag == FGameplayTag() || UACFFunctionLibrary::ShouldExecuteAction(elem, characterOwner)) {
-                executableActions.Add(elem);
-                weights.Add(elem.Weight);
-            }
-        }
-        const int32 index = UACFFunctionLibrary::ExtractIndexWithProbability(weights);
-        if (executableActions.IsValidIndex(index)) {
-            const auto& elem = executableActions[index];
-            aiController->SetWaitDurationTimeBK(elem.BTWaitTime);
-            if (elem.bRequiresTicket) {
-                return EvaluateTicket(elem);
+	FActionsChances* actions = InternalCombatBehaviour->ActionByCombatState.Find(combatState);
+	if (actions) {
+		TArray<float> weights;
+		TArray<FActionChances> executableActions;
+		for (const auto& elem : actions->PossibleActions) {
+			if (elem.ActionTag == FGameplayTag() || UACFFunctionLibrary::ShouldExecuteAction(elem, pawnOwner)) {
+				executableActions.Add(elem);
+				weights.Add(elem.Weight);
+			}
+		}
+		const int32 index = UACFFunctionLibrary::ExtractIndexWithProbability(weights);
+		if (executableActions.IsValidIndex(index)) {
+			const auto& elem = executableActions[index];
+			aiController->SetWaitDurationTimeBK(elem.BTWaitTime);
+			if (elem.bRequiresTicket) {
+				return EvaluateTicket(elem);
 
-            } else {
-                characterOwner->TriggerAction(elem.ActionTag, elem.Priority);
-                return true;
-            }
-        }
-    }
-    return false;
+			}
+			else {
+				abilityComp->TriggerAction(elem.ActionTag, elem.Priority);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void UACFCombatBehaviourComponent::SetCombatBehaviour(UACFBaseCombatBehaviorDataAsset* combatBehav)
+{
+	CombatBehaviour = combatBehav;
+	InternalCombatBehaviour = Cast<UACFCombatBehaviorDataAsset>(CombatBehaviour);
 }
 
 bool UACFCombatBehaviourComponent::EvaluateTicket(const FActionChances& elem)
@@ -69,38 +131,13 @@ bool UACFCombatBehaviourComponent::EvaluateTicket(const FActionChances& elem)
 		return false;
 	}
 	if (aiManager->HasTicket(aiController) || aiManager->RequestTicket(UATSTargetingFunctionLibrary::GetTargetedActor(aiController->GetPawn()), aiController, elem.TicketDuration)) {
-		characterOwner->TriggerAction(elem.ActionTag, elem.Priority);
+		abilityComp->TriggerAction(elem.ActionTag, elem.Priority);
 		return true;
 	}
 
 	return false;
 }
 
-
-
-bool UACFCombatBehaviourComponent::TryGetBestConditionalAction(FActionChances& outAction)  {
-
-	if (!CombatBehaviour) {
-		UE_LOG(ACFAILog, Error, TEXT("No Combat Behavior found! - UACFCombatBehaviourComponent"));
-		return false;
-	}
-
-	TArray<float> weights;
-	TArray<FActionChances> executableActions;
-	for (const FConditions& actionCond : CombatBehaviour->ActionByCondition) {
-		const FActionChances action = actionCond;
-		if (actionCond.ActionTag == FGameplayTag() || (VerifyCondition(actionCond) && UACFFunctionLibrary::ShouldExecuteAction(action, characterOwner))) {
-			executableActions.Add(actionCond);
-			weights.Add(actionCond.Weight);
-		}
-	}
-	const int32 index = UACFFunctionLibrary::ExtractIndexWithProbability(weights);
-	if (executableActions.IsValidIndex(index)) {
-		outAction = executableActions[index];
-		return true;
-	}
-	return false;
-}
 
 bool UACFCombatBehaviourComponent::TryExecuteConditionAction()
 {
@@ -111,13 +148,14 @@ bool UACFCombatBehaviourComponent::TryExecuteConditionAction()
 
 	FActionChances elem;
 	if (TryGetBestConditionalAction(elem)) {
-		
-		aiController->SetWaitDurationTimeBK(elem.BTWaitTime);
+		if (aiController) {
+			aiController->SetWaitDurationTimeBK(elem.BTWaitTime);
+		}
 		if (elem.bRequiresTicket) {
 			return EvaluateTicket(elem);
 		}
 		else {
-			characterOwner->TriggerAction(elem.ActionTag, elem.Priority);
+			abilityComp->TriggerAction(elem.ActionTag, elem.Priority);
 			return true;
 		}
 	}
@@ -126,27 +164,27 @@ bool UACFCombatBehaviourComponent::TryExecuteConditionAction()
 
 bool UACFCombatBehaviourComponent::VerifyCondition(const FConditions& condition)
 {
-	return condition.Condition && condition.Condition->IsConditionMet(characterOwner);
+	return condition.Condition && condition.Condition->IsConditionMet(pawnOwner);
 }
 
 bool UACFCombatBehaviourComponent::IsTargetInMeleeRange(AActor* target)
 {
-	if (!CombatBehaviour) {
+	if (!InternalCombatBehaviour) {
 		UE_LOG(ACFAILog, Error, TEXT("No Combat Behavior found! - UACFCombatBehaviourComponent"));
 		return false;
 	}
 
-	const FAICombatStateConfig* meleeDist = CombatBehaviour->CombatStatesConfig.FindByKey(EAICombatState::EMeleeCombat);
+	const FAICombatStateConfig* meleeDist = InternalCombatBehaviour->CombatStatesConfig.FindByKey(EAICombatState::EMeleeCombat);
 
 	const ACharacter* targetChar = Cast<ACharacter>(target);
 	const float meleeDistance = GetIdealDistanceByCombatState(EAICombatState::EMeleeCombat);
 	if (meleeDist) {
 		if (targetChar) {
-			const float dist = UACFFunctionLibrary::CalculateDistanceBetweenCharactersExtents(characterOwner, targetChar);
+			const float dist = UACFFunctionLibrary::CalculateDistanceBetweenCharactersExtents(pawnOwner, targetChar);
 			return meleeDistance >= dist;
 		}
 		else if (target) {
-			return characterOwner->GetDistanceTo(target) <= meleeDistance;
+			return pawnOwner->GetDistanceTo(target) <= meleeDistance;
 		}
 	}
 	return false;
@@ -154,22 +192,22 @@ bool UACFCombatBehaviourComponent::IsTargetInMeleeRange(AActor* target)
 
 EAICombatState UACFCombatBehaviourComponent::GetBestCombatStateByTargetDistance(float targetDistance)
 {
-	if (!CombatBehaviour) {
+	if (!InternalCombatBehaviour) {
 		UE_LOG(ACFAILog, Error, TEXT("No Combat Behavior found! - UACFCombatBehaviourComponent"));
 		return EAICombatState::EMeleeCombat;
 	}
-	for (const FAICombatStateConfig& state : CombatBehaviour->CombatStatesConfig) {
+	for (const FAICombatStateConfig& state : InternalCombatBehaviour->CombatStatesConfig) {
 		if (EvaluateCombatState(state.CombatState)) {
 			return state.CombatState;
 		}
 	}
 
-	return CombatBehaviour->DefaultCombatState;
+	return InternalCombatBehaviour->DefaultCombatState;
 }
 
 float UACFCombatBehaviourComponent::GetIdealDistanceByCombatState(EAICombatState combatState) const
 {
-	const FAICombatStateConfig* aiState = CombatBehaviour->CombatStatesConfig.FindByKey(combatState);
+	const FAICombatStateConfig* aiState = InternalCombatBehaviour->CombatStatesConfig.FindByKey(combatState);
 	if (aiState) {
 		const UACFDistanceActionCondition* distanceCond = aiState->GetDistanceBasedCondition();
 		if (distanceCond) {
@@ -181,90 +219,71 @@ float UACFCombatBehaviourComponent::GetIdealDistanceByCombatState(EAICombatState
 	return -1.f;
 }
 
-void UACFCombatBehaviourComponent::InitBehavior(class AACFAIController* controller)
-{
-	if (controller) {
-		aiController = controller;
 
-		characterOwner = Cast<AACFCharacter>(controller->GetPawn());
-
-		if (!characterOwner) {
-			UE_LOG(ACFAILog, Error, TEXT("No ACFCharacter for combat behaviour! - UACFCombatBehaviourComponent::InitBehavior"));
-			return;
-		}
-		if (characterOwner->GetACFCharacterMovementComponent()) {
-			characterOwner->GetACFCharacterMovementComponent()->ResetStrafeMovement();
-		}
-		characterOwner->TriggerAction(EngagingAction, EActionPriority::EHigh);
-		if (CheckEquipment()) {
-			TryEquipWeapon();
-		}
-	}
-}
 
 void UACFCombatBehaviourComponent::TryEquipWeapon()
 {
-	const UACFEquipmentComponent* equipComp = characterOwner->GetEquipmentComponent();
+	const UACFEquipmentComponent* equipComp = pawnOwner->GetEquipmentComponent();
 
 	ensure(equipComp);
 
-	if (!CombatBehaviour) {
+	if (!InternalCombatBehaviour) {
 		UE_LOG(ACFAILog, Error, TEXT("No Combat Behavior found! - UACFCombatBehaviourComponent"));
 		return;
 	}
 
-	if (CombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::EMelee) {
-		characterOwner->TriggerAction(EquipMeleeAction, EActionPriority::EMedium);
+	if (InternalCombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::EMelee) {
+		abilityComp->TriggerAction(EquipMeleeAction, EActionPriority::EMedium);
 		aiController->SetCombatStateBK(EAICombatState::EMeleeCombat);
 	}
-	else if (CombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::ERanged) {
-		characterOwner->TriggerAction(EquipRangedAction, EActionPriority::EMedium);
+	else if (InternalCombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::ERanged) {
+		abilityComp->TriggerAction(EquipRangedAction, EActionPriority::EMedium);
 		aiController->SetCombatStateBK(EAICombatState::ERangedCombat);
 	}
 }
 
 void UACFCombatBehaviourComponent::UninitBehavior()
 {
-	if (!CombatBehaviour) {
+	if (!InternalCombatBehaviour) {
 		UE_LOG(ACFAILog, Error, TEXT("No Combat Behavior found! - UACFCombatBehaviourComponent"));
 		return;
 	}
-	if (CombatBehaviour->bNeedsWeapon && characterOwner && CombatBehaviour && characterOwner->GetCombatType() != ECombatType::EUnarmed) {
-		const FGameplayTag unequipAction = CombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::EMelee ? EquipMeleeAction : EquipRangedAction;
-		characterOwner->TriggerAction(unequipAction, EActionPriority::EHigh);
+	if (InternalCombatBehaviour->bNeedsWeapon && pawnOwner && InternalCombatBehaviour && pawnOwner->GetCombatType() != ECombatType::EUnarmed) {
+		const FGameplayTag unequipAction = InternalCombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::EMelee ? EquipMeleeAction : EquipRangedAction;
+		abilityComp->TriggerAction(unequipAction, EActionPriority::EHigh);
 	}
 }
 
 bool UACFCombatBehaviourComponent::CheckEquipment()
 {
-	if (!characterOwner || !CombatBehaviour) {
+	if (!pawnOwner || !InternalCombatBehaviour) {
 		return false;
 	}
-	return (characterOwner->GetCombatType() != ECombatType::EMelee && CombatBehaviour->bNeedsWeapon && CombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::EMelee) ||
-		(characterOwner->GetCombatType() != ECombatType::ERanged && CombatBehaviour->bNeedsWeapon && CombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::ERanged);
+	return (pawnOwner->GetCombatType() != ECombatType::EMelee && InternalCombatBehaviour->bNeedsWeapon && InternalCombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::EMelee) ||
+		(pawnOwner->GetCombatType() != ECombatType::ERanged && InternalCombatBehaviour->bNeedsWeapon && InternalCombatBehaviour->DefaultCombatBehaviorType == ECombatBehaviorType::ERanged);
 }
 
 void UACFCombatBehaviourComponent::UpdateCombatLocomotion(EAICombatState combatState)
 {
-	if (!CombatBehaviour) {
+	if (!InternalCombatBehaviour) {
 		return;
 	}
-	const FAICombatStateConfig* locstate = CombatBehaviour->CombatStatesConfig.FindByKey(combatState);
-	if (locstate && characterOwner->GetACFCharacterMovementComponent()) {
-		characterOwner->GetACFCharacterMovementComponent()->SetLocomotionState(locstate->LocomotionState);
+	const FAICombatStateConfig* locstate = InternalCombatBehaviour->CombatStatesConfig.FindByKey(combatState);
+	if (locstate && moventComp) {
+		moventComp->SetLocomotionState(locstate->LocomotionState);
 	}
 }
 
 bool UACFCombatBehaviourComponent::EvaluateCombatState(EAICombatState combatState)
 {
-	if (!CombatBehaviour) {
+	if (!InternalCombatBehaviour) {
 		return false;
 	}
-	if (!CombatBehaviour->CombatStatesConfig.Contains(combatState)) {
+	if (!InternalCombatBehaviour->CombatStatesConfig.Contains(combatState)) {
 		return false;
 	}
 
-	const FAICombatStateConfig* chance = CombatBehaviour->CombatStatesConfig.FindByKey(combatState);
+	const FAICombatStateConfig* chance = InternalCombatBehaviour->CombatStatesConfig.FindByKey(combatState);
 
 	if (chance) {
 		for (auto condition : chance->Conditions) {
@@ -272,7 +291,7 @@ bool UACFCombatBehaviourComponent::EvaluateCombatState(EAICombatState combatStat
 				UE_LOG(ACFAILog, Error, TEXT("INVALID ACTION CONDITION IN COMBAT CONFIG! - UACFCombatBehaviourComponent"));
 				continue;
 			}
-			if (condition && !condition->IsConditionMet(characterOwner)) {
+			if (condition && !condition->IsConditionMet(pawnOwner)) {
 				return false;
 			}
 		}

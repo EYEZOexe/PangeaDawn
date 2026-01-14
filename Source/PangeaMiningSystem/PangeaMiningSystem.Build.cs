@@ -9,27 +9,21 @@ public class PangeaMiningSystem : ModuleRules
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core", 
                 "InventorySystem",
                 "AIFramework",
-                "AscentCoreInterfaces",
-                "SmartObjectsModule",
-                "GameplayBehaviorSmartObjectsModule",
-                "GameplayTags",
-                "GameplayTasks",
-                "InputCore",
-                "AIModule"
+                "AscentCombatFramework",
+                "AscentCoreInterfaces"
             }
         );
 
         PrivateDependencyModuleNames.AddRange(
             new string[]
             {
+                "Core",
                 "CoreUObject",
                 "Engine",
                 "Slate",
-                "SlateCore", 
-                "AscentCombatFramework"
+                "SlateCore"
             }
         );
     }

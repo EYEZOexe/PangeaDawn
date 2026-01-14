@@ -10,12 +10,19 @@
 #include "Game/ACFDamageType.h"
 #include "Game/ACFTypes.h"
 #include <Components/ActorComponent.h>
+#include "Data/ACFBaseCombatBehaviorDataAsset.h"
 
 #include "ACFCombatBehaviourComponent.generated.h"
 
 struct FACFDamageEvent;
 class AACFAIController;
 class UACFCombatBehaviorDataAsset;
+class UACFAbilitySystemComponent;
+class UACFCharacterMovementComponent;
+class AACFBaseAIController;
+
+
+
 /**
  *
  */
@@ -25,6 +32,15 @@ class AIFRAMEWORK_API UACFCombatBehaviourComponent : public UActorComponent {
 	GENERATED_BODY()
 
 public:
+
+	/**
+	 * Tries to execute one of the actions defined in ActionByCondition based on evaluated conditions.
+	 *
+	 * @return true if a conditional action was executed successfully; false otherwise.
+	 */
+	UFUNCTION(BlueprintCallable, Category = ACF)
+	virtual bool TryExecuteConditionAction();
+
 	/**
 	 * Tries to execute one of the actions defined in ActionByCombatState for the specified combat state.
 	 *
@@ -41,14 +57,6 @@ public:
 	 * @return true if the action passes the evaluation and can be executed.
 	 */
 	bool EvaluateTicket(const FActionChances& elem);
-
-	/**
-	 * Tries to execute one of the actions defined in ActionByCondition based on evaluated conditions.
-	 *
-	 * @return true if a conditional action was executed successfully; false otherwise.
-	 */
-	UFUNCTION(BlueprintCallable, Category = ACF)
-	virtual bool TryExecuteConditionAction();
 
 	/**
 	 * Checks whether the given target is within melee range of this AI.
@@ -77,21 +85,38 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	float GetIdealDistanceByCombatState(EAICombatState combatState) const;
 
+	/**
+	 * Attempts to find the best conditional action that passes both its condition check and ticket evaluation.
+	 *
+	 * @param outAction [out] The action that was selected, if any.
+	 * @return true if a valid conditional action was found; false otherwise.
+	 */
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	bool TryGetBestConditionalAction(FActionChances& outAction);
 
+	/**
+	 * Returns the current combat behavior data asset used by this AI.
+	 *
+	 * @return The active combat behavior data asset, or nullptr if none is set.
+	 */
 	UFUNCTION(BlueprintPure, Category = ACF)
-	UACFCombatBehaviorDataAsset* GetCombatBehaviour() const { return CombatBehaviour; }
+	UACFBaseCombatBehaviorDataAsset* GetCombatBehaviour() const { return CombatBehaviour; }
 
+	/**
+	 * Sets a new combat behavior data asset for this AI.
+	 *
+	 * @param combatBehav The combat behavior data asset to assign.
+	 */
 	UFUNCTION(BlueprintCallable, Category = ACF)
-	void SetCombatBehaviour(UACFCombatBehaviorDataAsset* combatBehav) { CombatBehaviour = combatBehav; }
+	void SetCombatBehaviour(UACFBaseCombatBehaviorDataAsset* combatBehav);
 
 	UACFCombatBehaviourComponent();
+	void InitBehavior(AACFBaseAIController* controller);
 
 protected:
 	/* A data asset describing how this AI should behave in combat*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF")
-	UACFCombatBehaviorDataAsset* CombatBehaviour;
+	UACFBaseCombatBehaviorDataAsset* CombatBehaviour;
 
 	/* Action to be triggered by this ai to equip a Melee weapon*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|DefaultActionsTag")
@@ -133,9 +158,9 @@ protected:
 	friend class AACFAIController;
 
 private:
+
 	bool VerifyCondition(const FConditions& condition);
 
-	void InitBehavior(class AACFAIController* _controller);
 
 	void TryEquipWeapon();
 
@@ -145,9 +170,23 @@ private:
 
 	void UpdateCombatLocomotion(EAICombatState combatState);
 
-	TObjectPtr<AACFCharacter> characterOwner;
+	bool EvaluateCombatState(EAICombatState combatState);
 
+	UPROPERTY()
+	TObjectPtr<AACFCharacter> pawnOwner;
+
+	UPROPERTY()
 	TObjectPtr<AACFAIController> aiController;
 
-	bool EvaluateCombatState(EAICombatState combatState);
+	UPROPERTY()
+	TObjectPtr<UACFAbilitySystemComponent> abilityComp;
+
+	UPROPERTY()
+	TObjectPtr<UACFCharacterMovementComponent> moventComp;
+
+	/// The internal combat behaviour data asset
+	UPROPERTY()
+	TObjectPtr<UACFCombatBehaviorDataAsset>  InternalCombatBehaviour;
+
+
 };

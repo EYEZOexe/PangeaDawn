@@ -23,6 +23,7 @@
 #include <Kismet/KismetSystemLibrary.h>
 #include <Logging.h>
 #include <TimerManager.h>
+#include "ACFGameplayAbility.h"
 
 // Sets default values for this component's properties
 UACFAbilitySystemComponent::UACFAbilitySystemComponent()
@@ -34,7 +35,7 @@ UACFAbilitySystemComponent::UACFAbilitySystemComponent()
 	// ActionsSet = UACFActionsSet::StaticClass();
 	CurrentPriority = -1;
 	StoredAction = FGameplayTag();
-	CurrentActionTag = FGameplayTag();
+	CurrentAbilityTag = FGameplayTag();
 }
 
 // Called when the game starts
@@ -79,7 +80,7 @@ void UACFAbilitySystemComponent::GrantInitialAbilities()
 void UACFAbilitySystemComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(UACFAbilitySystemComponent, CurrentActionTag);
+	DOREPLIFETIME(UACFAbilitySystemComponent, CurrentAbilityTag);
 	DOREPLIFETIME(UACFAbilitySystemComponent, CurrentPriority);
 	DOREPLIFETIME(UACFAbilitySystemComponent, bIsPerformingAction);
 	DOREPLIFETIME(UACFAbilitySystemComponent, currentMovesetActionsTag);
@@ -104,13 +105,13 @@ bool UACFAbilitySystemComponent::TriggerAction(FGameplayTag abilityTag,
 }
 
 
-bool UACFAbilitySystemComponent::TriggerActionWithPayload(FGameplayTag AbilityTag,	const FACFAbilityPayload& Payload,
+bool UACFAbilitySystemComponent::TriggerActionWithPayload(FGameplayTag AbilityTag, const FACFAbilityPayload& Payload,
 	EActionPriority Priority /*= EActionPriority::ELow*/, bool bCanBeStored /*= false*/)
 {
 	FGameplayEventData EventData;
 	EventData.Instigator = CharacterOwner;
 	EventData.EventTag = Payload.PayloadTag;
-	
+
 	// INT
 	EventData.EventMagnitude = Payload.FloatPayload;
 
@@ -152,7 +153,7 @@ bool UACFAbilitySystemComponent::Internal_TriggerAction(
 		// Use LaunchAbilityWithPayload wrapper (handles both cases)
 		return LaunchAbilityWithPayload(handle, Priority, OptionalEventData);
 	}
-	else if (CurrentActionTag != FGameplayTag() && bCanStoreAction && bCanBeStored && GetStoredAction() == FGameplayTag()) {
+	else if (CurrentAbilityTag != FGameplayTag() && bCanStoreAction && bCanBeStored && GetStoredAction() == FGameplayTag()) {
 		StoreAbilityInBuffer(abilityTag);
 		return false;
 	}
@@ -189,28 +190,13 @@ bool UACFAbilitySystemComponent::LaunchAbilityWithPayload(
 	}
 }
 
-bool UACFAbilitySystemComponent::LaunchAbility(
-	const FGameplayAbilitySpecHandle& handle,
-	const EActionPriority priority)
+bool UACFAbilitySystemComponent::LaunchAbility(const FGameplayAbilitySpecHandle& handle, const EActionPriority priority)
 {
 	ExitCurrentAction();
 	SetPendingPriority((int32)priority);
 
-
-	// Create GameplayEventData with payload
-	FGameplayEventData EventData;
-	EventData.Instigator = CharacterOwner;
-	EventData.Target = CharacterOwner;
-	//EventData.TargetLocation = TargetLocation; 
-	//EventData.EventMagnitude = static_cast<float>(IntData);
-
-	// Get the ability's tag for the event
-	FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(handle);
-	if (Spec && Spec->GetDynamicSpecSourceTags().Num() > 0) {
-		EventData.EventTag = Spec->GetDynamicSpecSourceTags().First();
-	}
-
-	return TriggerAbilityFromGameplayEvent(handle, AbilityActorInfo.Get(), EventData.EventTag, &EventData, *this);
+	return TryActivateAbility(handle);
+	//return TriggerAbilityFromGameplayEvent(handle, AbilityActorInfo.Get(), EventData.EventTag, &EventData, *this);
 }
 
 
@@ -237,13 +223,13 @@ void UACFAbilitySystemComponent::GrantAbilitySet(UACFAbilitySet* abilitySet, FGa
 			GrantAbility(ability, dynamicTag);
 		}
 		for (const auto& ability : abilitySet->ActionAbilities) {
-			GrantActionAbility(ability, dynamicTag);
+			GrantACFAbility(ability, dynamicTag);
 		}
 
+		/*
 		if (!MovesetAbilities.Contains(dynamicTag)) {
 			MovesetAbilities.Add(dynamicTag, abilitySet);
-		}
-
+		}*/
 	}
 	else {
 		UE_LOG(ACFLog, Error, TEXT("Invalid Ability Set - UACFAbilitySystemComponent::GrantAbilitySet"));
@@ -290,16 +276,17 @@ FGameplayAbilitySpecHandle UACFAbilitySystemComponent::GrantAbility(const FAbili
 	return GiveAbility(spec);
 }
 
-FGameplayAbilitySpecHandle UACFAbilitySystemComponent::GrantActionAbility(const FActionAbilityConfig& ability, FGameplayTag dynamicTag)
+FGameplayAbilitySpecHandle UACFAbilitySystemComponent::GrantACFAbility(const FActionAbilityConfig& ability, FGameplayTag dynamicTag)
 {
 	if (!ability.Action) {
 		return FGameplayAbilitySpecHandle();
 	}
 
-	/* TO DO: check for duplicates
+	// DO: check for duplicates
+	/*
 	const FGameplayAbilitySpecHandle handle = GetAbilityHandle(ability.TriggeringTag, dynamicTag);
 	if (handle.IsValid()) {
-		UE_LOG(ACFLog, Error, TEXT("Duplicate Ability Tags!!!- UACFAbilitySystemComponent::GrantActionAbility"));
+		UE_LOG(ACFLog, Warning, TEXT("Duplicate Ability Tags!!!- UACFAbilitySystemComponent::GrantActionAbility"));
 		return FGameplayAbilitySpecHandle();
 	}*/
 
@@ -309,7 +296,7 @@ FGameplayAbilitySpecHandle UACFAbilitySystemComponent::GrantActionAbility(const 
 		spec.GetDynamicSpecSourceTags().AddTag(dynamicTag);
 	}
 	FGameplayAbilitySpecHandle abilityHandle = GiveAbility(spec);
-	TObjectPtr<UACFActionAbility> actionAbility = Cast<UACFActionAbility>(GetAbilityInstance(abilityHandle));
+	TObjectPtr<UACFGameplayAbility> actionAbility = Cast<UACFGameplayAbility>(GetAbilityInstance(abilityHandle));
 	if (actionAbility) {
 		actionAbility->InitAbility();
 	}
@@ -329,27 +316,28 @@ void UACFAbilitySystemComponent::TriggerGameplayEvent(const FGameplayTag& gamepl
 
 
 
-void UACFAbilitySystemComponent::OnAbilityStarted(TObjectPtr<UACFActionAbility> ability)
+void UACFAbilitySystemComponent::OnAbilityStarted(TObjectPtr<UACFGameplayAbility> ability)
 {
 	if (PerformingAction) {
 		LastActivatedAbility = PerformingAction;
 	}
-	PerformingAction = ability;
-	CurrentActionTag = ability->GetActionTag();
+
+	PerformingAction = Cast<UACFActionAbility>(ability);
+	CurrentAbilityTag = ability->GetActionTag();
 	bIsPerformingAction = true;
 	if (CharacterOwner && CharacterOwner->HasAuthority()) {
 		SetCurrentPriority(PendingPriority);
 	}
-	OnAbilityStartedEvent.Broadcast(CurrentActionTag);
+	OnAbilityStartedEvent.Broadcast(CurrentAbilityTag);
 	PrintStateDebugInfo(true);
 }
 
-void UACFAbilitySystemComponent::OnAbilityEnded(TObjectPtr<UACFActionAbility> ability)
+void UACFAbilitySystemComponent::OnAbilityEnded(TObjectPtr<UACFGameplayAbility> ability)
 {
 	PrintStateDebugInfo(false);
 
-	OnAbilityFinishedEvent.Broadcast(CurrentActionTag);
-	CurrentActionTag = FGameplayTag();
+	OnAbilityFinishedEvent.Broadcast(CurrentAbilityTag);
+	CurrentAbilityTag = FGameplayTag();
 
 	bIsPerformingAction = false;
 	LastActivatedAbility = ability;
@@ -392,7 +380,7 @@ bool UACFAbilitySystemComponent::CanExecuteAbilityByHandle(const FGameplayAbilit
 		TObjectPtr<UGameplayAbility> baseAbility = GetAbilityInstance(handle);
 
 		if (baseAbility) {
-			UACFActionAbility* actionAbility = Cast<UACFActionAbility>(baseAbility);
+			UACFGameplayAbility* actionAbility = Cast<UACFGameplayAbility>(baseAbility);
 			if (actionAbility) {
 				if (!actionAbility->IsFullyInit()) {
 					actionAbility->InitAbility();
@@ -421,12 +409,12 @@ void UACFAbilitySystemComponent::ReleaseSustainedAction(FGameplayTag actionTag)
 	}
 }
 
-void UACFAbilitySystemComponent::SetCurrentPriority_Implementation(const int32 newPriority)
+void UACFAbilitySystemComponent::SetCurrentPriority(const int32 newPriority)
 {
 	CurrentPriority = newPriority;
 }
 
-void UACFAbilitySystemComponent::SetPendingPriority_Implementation(const int32 newPriority)
+void UACFAbilitySystemComponent::SetPendingPriority(const int32 newPriority)
 {
 	PendingPriority = newPriority;
 }
@@ -477,7 +465,7 @@ FGameplayAbilitySpecHandle UACFAbilitySystemComponent::GetAbilityHandle(const FG
 
 FGameplayTag UACFAbilitySystemComponent::GetCurrentActionTag() const
 {
-	return CurrentActionTag;
+	return CurrentAbilityTag;
 }
 
 void UACFAbilitySystemComponent::ExitCurrentAction()
@@ -536,7 +524,7 @@ void UACFAbilitySystemComponent::PrintStateDebugInfo(bool bIsEntring)
 {
 	if (bPrintDebugInfo && GEngine && CharacterOwner) {
 		FString ActionName;
-		CurrentActionTag.GetTagName().ToString(ActionName);
+		CurrentAbilityTag.GetTagName().ToString(ActionName);
 		FString MessageToPrint;
 		if (bIsEntring) {
 			MessageToPrint = CharacterOwner->GetName() + FString("Started Ability:") + ActionName;
@@ -558,6 +546,7 @@ void UACFAbilitySystemComponent::SetComboCounter(const FGameplayTag& comboTag, i
 		ComboCounters.Remove(FComboCounter(comboTag, value));
 	}
 	ComboCounters.Add(FComboCounter(comboTag, value));
+	GetOwner()->ForceNetUpdate();
 }
 
 int32 UACFAbilitySystemComponent::GetComboCount(const FGameplayTag& comboTag) const

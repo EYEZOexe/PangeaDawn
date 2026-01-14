@@ -57,10 +57,8 @@ class ASCENTLOADINGSCREEN_API UALSLoadingScreenSettings : public UDeveloperSetti
 public:
     bool GetIsEnabled() const { return EnableLoadingScreen; }
     FALSLoadingScreenAttributes GetLoadingScreenSettings() const { return LoadingScreenAttributes; }
-    FALSLoadingScreenAttributes GetStartUpSettings() const { return StartUpAttributes; }
 
     TSubclassOf<class UUserWidget> GetLoadingScreen() const { return LoadingWidget; }
-
     UALSLoadingScreenSettings();
 
 
@@ -68,8 +66,7 @@ protected:
     UPROPERTY(EditAnywhere, config, Category = "ALS")
     bool EnableLoadingScreen;
 
-    UPROPERTY(EditAnywhere, config, Category = "ALS|StartUp")
-    FALSLoadingScreenAttributes StartUpAttributes;
+
 
     UPROPERTY(EditAnywhere, config, Category = "ALS|LoadingScreens")
     FALSLoadingScreenAttributes LoadingScreenAttributes;

@@ -15,7 +15,7 @@ void UACFComboAction::OnActionStarted_Implementation()
 FName UACFComboAction::GetMontageSectionName_Implementation()
 {
     if (animMontage) {
-        const int32 currentCount = GetActionsManager()->GetComboCount(ActionTag);
+        const int32 currentCount = GetACFAbilityComponent()->GetComboCount(GetTriggeringTag());
         const FName SectionName = animMontage->GetSectionName(currentCount);
 
         if (SectionName != NAME_None) {
@@ -38,7 +38,7 @@ void UACFComboAction::OnActionEnded_Implementation()
 
 void UACFComboAction::ResetComboCounter()
 {
-    GetActionsManager()->ResetComboCount(ActionTag);
+    GetACFAbilityComponent()->ResetComboCount(GetTriggeringTag());
     bSuccesfulCombo = false;
 }
 
@@ -54,16 +54,16 @@ void UACFComboAction::SendComboInput()
 
     int32 currentCount = GetComboCounter();
     if (currentCount + 1 >= animMontage->CompositeSections.Num()) {
-        GetActionsManager()->ResetComboCount(ActionTag);
+        GetACFAbilityComponent()->ResetComboCount(GetTriggeringTag());
     } else {
-        GetActionsManager()->SetComboCounter(ActionTag, ++currentCount);
+        GetACFAbilityComponent()->SetComboCounter(GetTriggeringTag(), ++currentCount);
     }
     bSuccesfulCombo = true;
 }
 
 void UACFComboAction::OnGameplayEventReceived_Implementation(const FGameplayTag eventTag)
 {
-    if (eventTag.MatchesTag(ActionTag)) {
+    if (eventTag.MatchesTag(GetTriggeringTag())) {
         SendComboInput();
         bSuccesfulCombo = true;
     }

@@ -17,6 +17,7 @@
 #include "Misc/ConfigCacheIni.h"
 #include "Interfaces/IPluginManager.h"
 #include "ACFEditorStyle.h"
+#include "UObject/FindObjectFlags.h"
 
 #define LOCTEXT_NAMESPACE "UAssetCreatorSubsystem"
 
@@ -113,7 +114,7 @@ bool UACFEditorSubsystem::GetClassFromBlueprint(const FAssetData AssetData, UCla
 		FAssetDataTagMapSharedView::FFindTagResult Result = AssetData.TagsAndValues.FindTag(TEXT("NativeParentClass"));
 		if (Result.IsSet()) {
 			const FString ClassObjectPath = FPackageName::ExportTextPathToObjectPath(Result.GetValue());
-			if (UClass* ParentClass = FindObjectSafe<UClass>(nullptr, *ClassObjectPath, true)) {
+			if (UClass* ParentClass = FindObjectSafe<UClass>(nullptr, *ClassObjectPath, EFindObjectFlags::ExactClass)) {
 				if (ParentClass->IsChildOf(ClassToFind)) {
 					// TODO: Loading these assets could cause problems on projects with a large number of them.
 					UBlueprint* BP = CastChecked<UBlueprint>(AssetData.GetAsset());

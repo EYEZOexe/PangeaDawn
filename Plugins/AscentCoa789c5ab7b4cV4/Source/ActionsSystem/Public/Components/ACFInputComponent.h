@@ -20,52 +20,53 @@ class UACFInputConfigDataAsset;
  */
 UCLASS(ClassGroup = (ACF), meta = (BlueprintSpawnableComponent))
 class ACTIONSSYSTEM_API UACFInputComponent : public UActorComponent {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    UACFInputComponent();
+	UACFInputComponent();
+
+	// Setup the input bindings from the data asset
+	UFUNCTION(BlueprintCallable, Category = "ACF Input")
+	void SetupInputBindings();
+
+	// Clean up existing bindings
+	UFUNCTION(BlueprintCallable, Category = "ACF Input")
+	void CleanupInputBindings();
 
 protected:
-    virtual void BeginPlay() override;
-    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-    // Data Asset containing binding configuration
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF Input")
-    TObjectPtr<UACFInputConfigDataAsset> InputConfigDataAsset;
+	// Data Asset containing binding configuration
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF Input")
+	TObjectPtr<UACFInputConfigDataAsset> InputConfigDataAsset;
 
-    // Reference to the Ability System Component
-    UPROPERTY(BlueprintReadOnly, Category = "ACF Input")
-    TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+	// Reference to the Ability System Component
+	UPROPERTY(BlueprintReadOnly, Category = "ACF Input")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
-    // Reference to the Enhanced Input Component
-    UPROPERTY(BlueprintReadOnly, Category = "ACF Input")
-    TObjectPtr<UEnhancedInputComponent> EnhancedInputComponent;
+	// Reference to the Enhanced Input Component
+	UPROPERTY(BlueprintReadOnly, Category = "ACF Input")
+	TObjectPtr<UEnhancedInputComponent> EnhancedInputComponent;
 
-    // Handle input press events
-    void OnInputPressed(FGameplayTag AbilityTag);
-    
-    // Handle input release events
-    void OnInputReleased(FGameplayTag AbilityTag);
+	// Handle input press events
+	void OnInputPressed(FGameplayTag AbilityTag);
 
-    // Setup the input bindings from the data asset
-    UFUNCTION(BlueprintCallable, Category = "ACF Input")
-    void SetupInputBindings();
+	// Handle input release events
+	void OnInputReleased(FGameplayTag AbilityTag);
 
-    // Clean up existing bindings
-    UFUNCTION(BlueprintCallable, Category = "ACF Input")
-    void CleanupInputBindings();
+	// Called when controller changes (possess/unpossess)
+	UFUNCTION()
+	void OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController);
 
-    // Called when controller changes (possess/unpossess)
-    UFUNCTION()
-    void OnControllerChanged(APawn* Pawn, AController* OldController, AController* NewController);
-
-    // Helper function to find the AbilitySystemComponent
-    UFUNCTION(BlueprintCallable, Category = "ACF Input")
-    UAbilitySystemComponent* GetAbilitySystemComponent() const;
+	// Helper function to find the AbilitySystemComponent
+	UFUNCTION(BlueprintCallable, Category = "ACF Input")
+	UAbilitySystemComponent* GetAbilitySystemComponent() const;
 
 private:
-    // Map to track active ability handles for cancellation
-    TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveAbilityHandles;
-    
-    // Timer handle for delayed setup
-    FTimerHandle SetupTimerHandle;};
+	// Map to track active ability handles for cancellation
+	TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveAbilityHandles;
+
+	// Timer handle for delayed setup
+	FTimerHandle SetupTimerHandle;
+};

@@ -37,10 +37,10 @@ void UACFComboAttackAction::OnActionEnded_Implementation()
         }
         bSuccesfulCombo = comboComponent->HasPendingInput();
         if (bSuccesfulCombo && Combo->PerformTransition(comboComponent->GetLastTagInput(), GetCharacterOwner())) {
-            ActionsManager->StoreAbilityInBuffer(GetActionTag());
+            ACFAbilityComponent->StoreAbilityInBuffer(GetActionTag());
         } else {
             comboComponent->StopCombo(Combo);
-            ActionsManager->StoreAbilityInBuffer(FGameplayTag()); // we clean the input buffer
+            ACFAbilityComponent->StoreAbilityInBuffer(FGameplayTag()); // we clean the input buffer
         }
     }
 

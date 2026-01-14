@@ -86,3 +86,15 @@ void UAMSMapMarkerComponent::SetTracked(bool val)
 {
     bTracked = val;
 }
+
+bool UAMSMapMarkerComponent::ShowOnCompass() const
+{
+    UGameInstance* GameInstance = UGameplayStatics::GetGameInstance(this);
+    if (GameInstance) {
+        UAMSMapSubsystem* mapSubsystem = GameInstance->GetSubsystem<UAMSMapSubsystem>();
+        if (mapSubsystem) {
+            return mapSubsystem->IsMarkerActive(this) && GetTracked();
+        }
+    }
+    return false;
+}

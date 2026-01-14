@@ -19,7 +19,7 @@ class ASCENTCOMBATFRAMEWORK_API UACFHUDUserWidget : public UUserWidget
 protected: 
 
 	UFUNCTION(BlueprintImplementableEvent, Category = ACF)
-	void OnPossessedCharacterChanged(const class AACFCharacter* newChar);
+	void OnPossessedCharacterChanged(const class APawn* newChar);
 	
 };
   

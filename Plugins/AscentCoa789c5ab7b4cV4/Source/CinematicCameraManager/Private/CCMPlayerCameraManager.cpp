@@ -38,77 +38,14 @@ void ACCMPlayerCameraManager::BeginPlay()
 	if (!UKismetSystemLibrary::IsDedicatedServer(this)) {
 
 		UpdateCameraReferences();
-		GetOrSpawnStub(true);
-		GetOrSpawnStub(false);
 		FinalMov.FovInterpSpeed = 0.f;
 		FinalMov.InterpSpeed = 0.f;
 	}
 }
 
-ACameraActor* ACCMPlayerCameraManager::GetOrSpawnStub(bool bRequestA)
-{
-	ACameraActor*& Slot = bRequestA ? CameraStubA : CameraStubB;
 
-	if (!IsValid(Slot))
-	{
-		UWorld* World = GetWorld();
-		if (!World) return nullptr;
-
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.ObjectFlags |= RF_Transient;              // do not save
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		SpawnParams.Owner = GetOwningPlayerController();
-
-		Slot = World->SpawnActor<ACameraActor>(ACameraActor::StaticClass(),
-			FTransform::Identity, SpawnParams);
-
-		Slot->SetActorEnableCollision(false);
-		if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Slot->GetRootComponent()))
-		{
-			RootPrim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			RootPrim->SetGenerateOverlapEvents(false);
-		}
-
-		// Ensure the camera component is active so this actor can drive the POV
-		if (UCameraComponent* CameraComp = Slot->GetCameraComponent())
-		{
-			CameraComp->bAutoActivate = true;
-			CameraComp->SetActive(true);
-
-		}
-		// Optional: hide in game if you don’t want to see it in the world
-		Slot->SetActorHiddenInGame(true);
-	}
-	return Slot;
-}
-
-void ACCMPlayerCameraManager::MoveStubToPoint(ACameraActor* StubActor,
-	const FTransform& WorldTransform,
-	float TargetFOV) const
-{
-	if (!IsValid(StubActor)) return;
-
-	// Teleport to avoid interpolation by movement components
-	StubActor->SetActorTransform(WorldTransform, false, nullptr, ETeleportType::TeleportPhysics);
-
-	if (UCameraComponent* CameraComp = StubActor->GetCameraComponent())
-	{
-		CameraComp->SetRelativeTransform(FTransform::Identity);
-		CameraComp->SetFieldOfView(TargetFOV);
-		CameraComp->SetActive(true);
-		FVector Position = FVector(0.f, 0.f, 40.f);
-		FHitResult Hit;
-		CameraComp->SetRelativeLocation(Position, false, &Hit, ETeleportType::None);
-	}
-}
-
-
-void ACCMPlayerCameraManager::BlendToPoint(AActor* OwnerWithPoints,
-	FGameplayTag CameraTag,
-	float BlendTime,
-	TEnumAsByte<EViewTargetBlendFunction> BlendFunc,
-	float BlendExp,
-	bool bLockOutgoing)
+void ACCMPlayerCameraManager::BlendToPoint(AActor* OwnerWithPoints, FGameplayTag CameraTag, float BlendTime, TEnumAsByte<EViewTargetBlendFunction> BlendFunc,
+	float BlendExp, bool bLockOutgoing)
 {
 	APlayerController* PlayerController = GetOwningPlayerController();
 	if (!PlayerController || !IsValid(OwnerWithPoints))
@@ -118,36 +55,46 @@ void ACCMPlayerCameraManager::BlendToPoint(AActor* OwnerWithPoints,
 		return;
 	}
 
-	const bool bResolved = ResolveCameraPoint(OwnerWithPoints, CameraTag);
+	bool bResolved = false;
 
-	if (!bResolved)return;
+	UACFCameraPointComponent* cameraComp = ResolveCameraPoint(OwnerWithPoints, CameraTag, bResolved);
+
+	if (!bResolved || cameraComp == nullptr) {
+		UE_LOG(LogTemp, Warning, TEXT("[CCM] Camera Component not found!"));
+		return;
+	}
+	// Disattiva tutte le altre camere nell'attore
+	TArray<UCameraComponent*> AllCams;
+	OwnerWithPoints->GetComponents<UCameraComponent>(AllCams);
+	for (auto Cam : AllCams) {
+		if (Cam != cameraComp)
+			Cam->Deactivate();
+	}
+
+	// Attiva quella giusta
+	cameraComp->Activate(true);
+
 	PlayerController->SetViewTargetWithBlend(OwnerWithPoints, BlendTime, BlendFunc, BlendExp, bLockOutgoing);
-	
 }
 
-bool ACCMPlayerCameraManager::ResolveCameraPoint(
-	AActor* OwnerWithPoints,
-	const FGameplayTag& CameraTag
-) const
+UACFCameraPointComponent* ACCMPlayerCameraManager::ResolveCameraPoint(AActor* OwnerWithPoints, const FGameplayTag& CameraTag, bool& outBool) const
 {
-	
-	// 1) Look for UCameraPointComponent with matching tag on the target actor
+
+	// Look for UCameraPointComponent with matching tag on the target actor
 	TArray<UACFCameraPointComponent*> CameraPoints;
 	OwnerWithPoints->GetComponents<UACFCameraPointComponent>(CameraPoints);
-
+	outBool = false;
 	UACFCameraPointComponent* BestPoint = nullptr;
 	for (UACFCameraPointComponent* Candidate : CameraPoints)
 	{
 		if (IsValid(Candidate) && Candidate->CameraTag == CameraTag)
 		{
-			if (!BestPoint || Candidate->SelectionWeight > BestPoint->SelectionWeight)
-			{
-				BestPoint = Candidate;
-				return true;
-			}
+			outBool = true;
+			return Candidate;
+
 		}
 	}
-	return false;
+	return nullptr;
 }
 
 void ACCMPlayerCameraManager::BindEvents()

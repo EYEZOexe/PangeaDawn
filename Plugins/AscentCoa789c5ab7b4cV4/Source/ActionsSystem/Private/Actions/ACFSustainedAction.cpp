@@ -18,8 +18,8 @@ void UACFSustainedAction::ReleaseAction()
         const float secondsHeld = GetActionElapsedTime();
         ActionState = ESustainedActionState::EReleased;
         EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-        if (GetActionsManager() ) {
-            GetActionsManager()->TriggerAction(ReleaseActionTag, ReleaseActionPriority);
+        if (GetACFAbilityComponent() ) {
+            GetACFAbilityComponent()->TriggerAction(ReleaseActionTag, ReleaseActionPriority);
         }
     }
 }

@@ -9,66 +9,58 @@
 void UALSLoadingScreensSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 
-    // This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-    if (!IsRunningDedicatedServer()) {
-        bStartUpLoadingScreen = true;
-        FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UALSLoadingScreensSubsystem::BeginLoadingScreen);
-        FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UALSLoadingScreensSubsystem::EndLoadingScreen);
-    }
+	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	if (!IsRunningDedicatedServer()) {
+		bStartUpLoadingScreen = true;
+		FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UALSLoadingScreensSubsystem::BeginLoadingScreen);
+		FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UALSLoadingScreensSubsystem::EndLoadingScreen);
+	}
 }
 
 void UALSLoadingScreensSubsystem::Deinitialize()
 {
-    if (!IsRunningDedicatedServer()) {
-        FCoreUObjectDelegates::PreLoadMap.RemoveAll(this);
-        FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
-    }
+	if (!IsRunningDedicatedServer()) {
+		FCoreUObjectDelegates::PreLoadMap.RemoveAll(this);
+		FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
+	}
 }
 
 void UALSLoadingScreensSubsystem::BeginLoadingScreen(const FString& MapName)
 {
-    const UALSLoadingScreenSettings* Settings = GetDefault<UALSLoadingScreenSettings>();
-    TSubclassOf<class UUserWidget> loadingScreenClass = Settings->GetLoadingScreen();
-    UGameInstance* pc = UGameplayStatics::GetGameInstance(this);
+	const UALSLoadingScreenSettings* Settings = GetDefault<UALSLoadingScreenSettings>();
+	TSubclassOf<class UUserWidget> loadingScreenClass = Settings->GetLoadingScreen();
+	UGameInstance* pc = UGameplayStatics::GetGameInstance(this);
 
-    if (Settings->GetIsEnabled() && loadingScreenClass && pc) {
+	if (Settings->GetIsEnabled() && loadingScreenClass && pc) {
 
-        FLoadingScreenAttributes LoadingScreen;
-        if (bStartUpLoadingScreen) {
-            FALSLoadingScreenAttributes config = Settings->GetStartUpSettings();
-            LoadingScreen.MoviePaths = config.MoviePaths;
+		FLoadingScreenAttributes LoadingScreen;
+		if (!bStartUpLoadingScreen) {
 
-            LoadingScreen.bMoviesAreSkippable = true;
-            LoadingScreen.bAllowInEarlyStartup = config.bAllowInEarlyStartup;
-            LoadingScreen.PlaybackType = config.PlaybackType;
-            LoadingScreen.bAllowEngineTick = config.bAllowEngineTick;
-            LoadingScreen.bWaitForManualStop = config.bWaitForManualStop;
-            LoadingScreen.bAutoCompleteWhenLoadingCompletes = config.bAutoCompleteWhenLoadingCompletes;
-            LoadingScreen.MinimumLoadingScreenDisplayTime = config.MinimumLoadingScreenDisplayTime;
-        } else {
-            FALSLoadingScreenAttributes config = Settings->GetLoadingScreenSettings();
+			FALSLoadingScreenAttributes config = Settings->GetLoadingScreenSettings();
 
-            const auto LoadingWidget = CreateWidget<UUserWidget>(pc, loadingScreenClass, TEXT("LoadingScreen"));
-            LoadingScreen.WidgetLoadingScreen = LoadingWidget->TakeWidget();
-            LoadingScreen.bAllowInEarlyStartup = config.bAllowInEarlyStartup;
-            LoadingScreen.PlaybackType = config.PlaybackType;
-            LoadingScreen.bAllowEngineTick = config.bAllowEngineTick;
-            LoadingScreen.bWaitForManualStop = config.bWaitForManualStop;
-            LoadingScreen.bAutoCompleteWhenLoadingCompletes = config.bAutoCompleteWhenLoadingCompletes;
-            LoadingScreen.MinimumLoadingScreenDisplayTime = config.MinimumLoadingScreenDisplayTime;
-            LoadingScreen.bMoviesAreSkippable = false;
-        }
+			const auto LoadingWidget = CreateWidget<UUserWidget>(pc, loadingScreenClass, TEXT("LoadingScreen"));
+			LoadingScreen.WidgetLoadingScreen = LoadingWidget->TakeWidget();
+			LoadingScreen.bAllowInEarlyStartup = config.bAllowInEarlyStartup;
+			LoadingScreen.PlaybackType = config.PlaybackType;
+			LoadingScreen.bAllowEngineTick = config.bAllowEngineTick;
+			LoadingScreen.bWaitForManualStop = config.bWaitForManualStop;
+			LoadingScreen.bAutoCompleteWhenLoadingCompletes = config.bAutoCompleteWhenLoadingCompletes;
+			LoadingScreen.MinimumLoadingScreenDisplayTime = config.MinimumLoadingScreenDisplayTime;
+			LoadingScreen.bMoviesAreSkippable = false;
+			GetMoviePlayer()->SetupLoadingScreen(LoadingScreen);
+		}
 
-        GetMoviePlayer()->SetupLoadingScreen(LoadingScreen);
-    } else {
-        UE_LOG(LogTemp, Warning, TEXT("Missing Default Item Class! - UACFFunctionLibrary "));
-    }
+
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("Missing Default Item Class! - UACFFunctionLibrary "));
+	}
 }
 
 void UALSLoadingScreensSubsystem::EndLoadingScreen(UWorld* InLoadedWorld)
 {
-    OnMapLoaded.Broadcast();
-    bStartUpLoadingScreen = false;
+	OnMapLoaded.Broadcast();
+	bStartUpLoadingScreen = false;
 }
 
 // void UALSLoadingScreensSubsystem::Tick(float DeltaTime)
@@ -119,9 +111,9 @@ void UALSLoadingScreensSubsystem::EndLoadingScreen(UWorld* InLoadedWorld)
 
 void UALSLoadingScreensSubsystem::RemoveLoadingScreen()
 {
-    if (GetMoviePlayer() && GetMoviePlayer()->IsLoadingFinished()) {
+	if (GetMoviePlayer() && GetMoviePlayer()->IsLoadingFinished()) {
 
-        GetMoviePlayer()->StopMovie();
-        bIsSubsystemActive = false;
-    }
+		GetMoviePlayer()->StopMovie();
+		bIsSubsystemActive = false;
+	}
 }

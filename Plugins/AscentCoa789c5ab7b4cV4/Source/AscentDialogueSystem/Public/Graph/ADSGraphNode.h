@@ -156,9 +156,12 @@ protected:
     FText ContextMenuName;
 
     // References
+    UPROPERTY()
     TObjectPtr<UADSDialoguePartecipantComponent> participant;
 
     UPROPERTY()
     TObjectPtr<UAudioComponent> audioPlayer;
+
+    UPROPERTY()
     TObjectPtr<APlayerController> controller;
 };

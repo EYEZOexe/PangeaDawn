@@ -10,13 +10,14 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNewTarget, AActor*, newTarget);
 
 
+class AActor;
 
 UCLASS(ClassGroup = (ATS), Blueprintable, meta = (BlueprintSpawnableComponent))
 class ASCENTTARGETINGSYSTEM_API UATSBaseTargetComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	// Sets default values for this component's properties
 	UATSBaseTargetComponent();
 
@@ -34,7 +35,7 @@ public:
 
 	/*Return the currently focused target*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "ATS")
-	class AActor* GetCurrentTarget() const { return CurrentTarget; }
+	AActor* GetCurrentTarget() const { return CurrentTarget; }
 
 	/*Returns if there is a valid target*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "ATS")
@@ -62,7 +63,7 @@ public:
 protected:
 
 	/*Checks if there is any blocking actor in the line sight to current target*/
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ATS")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ATS")
 	bool bCheckLineSight = false;
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentTarget)
 	class AActor* CurrentTarget;

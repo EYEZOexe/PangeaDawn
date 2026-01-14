@@ -49,8 +49,9 @@ public class AIFramework : ModuleRules
 				"AscentTeams",
 				"DaySequence",
 				"GameplayBehaviorSmartObjectsModule",
-				"ContextualAnimation"
-			}
+				"ContextualAnimation",
+                "GameplayAbilities"
+            }
 			);
 		
 		

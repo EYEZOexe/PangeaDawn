@@ -199,6 +199,13 @@ FInventoryItem UACFItemSystemFunctionLibrary::MakeInventoryItemFromBase(const FB
 	return FInventoryItem(inItem);
 }
 
+FInventoryItem UACFItemSystemFunctionLibrary::MakeInventoryItemFromBaseWithNewGUID(const FBaseItem& inItem)
+{	
+	FInventoryItem Item = FInventoryItem(inItem);
+	Item.ForceGuid(FGuid::NewGuid());
+	return Item;
+}
+
 FGameplayTag UACFItemSystemFunctionLibrary::GetItemTypeTagRoot()
 {
 	return UGameplayTagsManager::Get().RequestGameplayTag(FName("Item"));
@@ -290,7 +297,7 @@ void UACFItemSystemFunctionLibrary::FilterByItemSlots(const TArray<FInventoryIte
         for (const FGameplayTag& slot : inSlots)
         {
             if (itemInfo.ItemSlots.Contains(slot)) {
-                outItems.Add(item);
+                outItems.AddUnique(item);
             }
         }
     }
@@ -313,21 +320,30 @@ UACFItemFragment* UACFItemSystemFunctionLibrary::FindFragmentByClass(const UACFI
 	return nullptr;
 }
 
-UACFItemFragment* UACFItemSystemFunctionLibrary::FindFragmentInItemClassByClass(const TSubclassOf<UACFItem> inItemClass, TSubclassOf<UACFItemFragment> FragmentClass)
+UACFItemFragment* UACFItemSystemFunctionLibrary::FindFragmentInItemClassByClass(
+	const TSubclassOf<UACFItem> InItemClass, 
+	TSubclassOf<UACFItemFragment> FragmentClass,
+	bool& OutFoundFragment)
 {
-	if (inItemClass)
+	OutFoundFragment = false;
+
+	if (InItemClass)
 	{
-		const UACFItem* itemInstance = Cast<UACFItem>(inItemClass.GetDefaultObject());
-		if (itemInstance) {
-			return FindFragmentByClass(itemInstance, FragmentClass);
+		const UACFItem* ItemInstance = Cast<UACFItem>(InItemClass.GetDefaultObject());
+		if (ItemInstance)
+		{
+			UACFItemFragment* Fragment = FindFragmentByClass(ItemInstance, FragmentClass);
+			if (Fragment)
+			{
+				OutFoundFragment = true;
+				return Fragment;
+			}
 		}
 	}
 
-	UE_LOG(ACFInventoryLog, Warning, TEXT("Missing Fragment! - UACFFunctionLibrary "));
-
+	UE_LOG(ACFInventoryLog, Warning, TEXT("Missing Fragment! - UACFItemSystemFunctionLibrary"));
 	return nullptr;
 }
-
 bool UACFItemSystemFunctionLibrary::IsValidItemTypeTag(FGameplayTag TagToCheck)
 {
 	const FGameplayTag root = GetItemTypeTagRoot();

@@ -71,7 +71,7 @@ bool UAQSObjectiveNode::TryToComplete()
                 return false;
             }
         }
-
+        CompleteNode();
         return true;
     }
     return false;

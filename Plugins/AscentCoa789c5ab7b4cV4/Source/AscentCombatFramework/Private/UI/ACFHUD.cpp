@@ -66,7 +66,7 @@ void AACFHUD::SetHudEnabled(bool bEnabled)
 	}
 }
 
-void AACFHUD::HandleCharacterPossessedChanged(const class AACFCharacter* newChar)
+void AACFHUD::HandleCharacterPossessedChanged(const class APawn* newChar)
 {
 	if (HUDWidget) {
 		HUDWidget->OnPossessedCharacterChanged(newChar);

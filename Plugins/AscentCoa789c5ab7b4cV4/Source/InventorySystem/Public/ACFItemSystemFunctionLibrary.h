@@ -105,7 +105,7 @@ public:
 	* @return The found fragment, or nullptr if not found
 	*/
 	UFUNCTION(BlueprintPure, Category = ACFLibrary, meta = (DeterminesOutputType = "FragmentClass"))
-	static UACFItemFragment* FindFragmentInItemClassByClass(const TSubclassOf<UACFItem> inItemClass, TSubclassOf<UACFItemFragment> FragmentClass);
+	static UACFItemFragment* FindFragmentInItemClassByClass(const TSubclassOf<UACFItem> inItemClass, TSubclassOf<UACFItemFragment> FragmentClass, bool& OutFoundFragment);
 
 
 	/**
@@ -203,6 +203,15 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = ACFLibrary)
 	static FInventoryItem MakeInventoryItemFromBase(const FBaseItem& inItem);
+
+	/**
+	 * Converts a base inventory item to a Inventory item structure with a new GUID
+	 *
+	 * @param inItem - Inventory item to convert
+	 * @return Base item structure
+	 */
+	UFUNCTION(BlueprintPure, Category = ACFLibrary)
+	static FInventoryItem MakeInventoryItemFromBaseWithNewGUID(const FBaseItem& inItem);
 
 	/**
 	 * Calculates the transform for shooting based on the source pawn and target type.

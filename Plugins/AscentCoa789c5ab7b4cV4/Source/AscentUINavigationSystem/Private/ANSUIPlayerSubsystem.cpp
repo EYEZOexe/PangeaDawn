@@ -19,229 +19,241 @@
 #include <Kismet/GameplayStatics.h>
 #include <GameFramework/PlayerController.h>
 #include "ANSWidgetInteractionComponent.h"
+#include "CommonActivatableWidget.h"
+
 
 UUserWidget* UANSUIPlayerSubsystem::SpawnInGameWidget(TSubclassOf<UUserWidget> widgetClass, bool bPauseGame /*= true*/, bool bLockGameInput)
 {
-    APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
+	APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
 
-    UUserWidget* spawnedWidget = CreateWidget<UUserWidget>(playerController, widgetClass);
-    if (spawnedWidget && playerController) {
-        DisplayInGameWidget(spawnedWidget, bPauseGame, bLockGameInput);
-    }
-    return spawnedWidget;
+	UUserWidget* spawnedWidget = CreateWidget<UUserWidget>(playerController, widgetClass);
+	if (spawnedWidget && playerController) {
+		DisplayInGameWidget(spawnedWidget, bPauseGame, bLockGameInput);
+	}
+	return spawnedWidget;
 }
 
 void UANSUIPlayerSubsystem::DisplayInGameWidget(UUserWidget* widgetRef, bool bPauseGame /*= true*/, bool bLockGameInput /*= true*/)
 {
-    APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
-    if (!playerController) {
-        UE_LOG(LogTemp, Error, TEXT("PlayerController not found! - UANSUIPlayerSubsystem::DisplayInGameWidget"));
-        return;
-    }
-    currentWidget = widgetRef;
-    widgetRef->AddToViewport();
-    bDefaultPauseGame = bPauseGame;
+	APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
+	if (!playerController) {
+		UE_LOG(LogTemp, Error, TEXT("PlayerController not found! - UANSUIPlayerSubsystem::DisplayInGameWidget"));
+		return;
+	}
+	currentWidget = widgetRef;
+	widgetRef->AddToViewport();
 
-    if (bLockGameInput) {
-        FInputModeUIOnly NewInputMode;
-        playerController->SetInputMode(NewInputMode);
-        NewInputMode.SetWidgetToFocus(widgetRef->GetCachedWidget());
-    } else {
-        FInputModeGameAndUI NewInputMode;
-        playerController->SetInputMode(NewInputMode);
-        NewInputMode.SetWidgetToFocus(widgetRef->GetCachedWidget());
-    }
+	if (UCommonActivatableWidget* Activatable = Cast<UCommonActivatableWidget>(widgetRef))
+	{
+		Activatable->ActivateWidget();
+	}
 
-    // NewInputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockOnCapture);
+	bDefaultPauseGame = bPauseGame;
 
-    UGameplayStatics::SetGamePaused(playerController, bPauseGame);
+	if (bLockGameInput) {
+		FInputModeUIOnly NewInputMode;
+		playerController->SetInputMode(NewInputMode);
+		NewInputMode.SetWidgetToFocus(widgetRef->GetCachedWidget());
+	}
+	else {
+		FInputModeGameAndUI NewInputMode;
+		playerController->SetInputMode(NewInputMode);
+		NewInputMode.SetWidgetToFocus(widgetRef->GetCachedWidget());
+	}
 
-    APawn* pawn = playerController->GetPawn();
-    if (pawn && pawn->GetMovementComponent()) {
-        pawn->GetMovementComponent()->StopMovementImmediately();
-    }
-    //         if (widgetStack.Contains(widgetClass)) {
-    //             widgetStack.Remove(widgetClass);
-    //         }
-    widgetStack.Add(widgetRef);
+	// NewInputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockOnCapture);
+
+	UGameplayStatics::SetGamePaused(playerController, bPauseGame);
+
+	APawn* pawn = playerController->GetPawn();
+	if (pawn && pawn->GetMovementComponent()) {
+		pawn->GetMovementComponent()->StopMovementImmediately();
+	}
+
+	widgetStack.Add(widgetRef);
 }
 
 void UANSUIPlayerSubsystem::RemoveInGameWidget(UUserWidget* widget, bool bUnlockUIInput, bool bRemovePause)
 {
-    APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
+	APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
 
-    if (widget && playerController) {
-        if (bRemovePause) {
-            UGameplayStatics::SetGamePaused(playerController, false);
-        }
+	if (widget && playerController) {
+		if (bRemovePause) {
+			UGameplayStatics::SetGamePaused(playerController, false);
+		}
 
-        if (bUnlockUIInput) {
-            FInputModeGameOnly NewInputMode;
-            playerController->SetInputMode(NewInputMode);
-        } else {
-            FInputModeUIOnly NewInputMode;
-            playerController->SetInputMode(NewInputMode);
-        }
+		if (bUnlockUIInput) {
+			FInputModeGameOnly NewInputMode;
+			playerController->SetInputMode(NewInputMode);
+		}
+		else {
+			FInputModeUIOnly NewInputMode;
+			playerController->SetInputMode(NewInputMode);
+		}
+		if (UCommonActivatableWidget* Activatable = Cast<UCommonActivatableWidget>(widget))
+		{
+			Activatable->DeactivateWidget();
+		}
+		widget->RemoveFromParent();
 
-        widget->RemoveFromParent();
-    }
+	}
 }
 
 void UANSUIPlayerSubsystem::GoToPreviousWidget()
 {
-    UUserWidget* previousWidget = widgetStack.Last();
+	UUserWidget* previousWidget = widgetStack.Last();
 
-    if (currentWidget == previousWidget) {
-        RemoveInGameWidget(currentWidget, true, false);
-        const int32 lastIndex = widgetStack.Num() - 1;
-        widgetStack.RemoveAt(lastIndex);
-    }
+	if (currentWidget == previousWidget) {
+		RemoveInGameWidget(currentWidget, true, false);
+		const int32 lastIndex = widgetStack.Num() - 1;
+		widgetStack.RemoveAt(lastIndex);
+	}
 
-    if (widgetStack.Num() > 0) {
-        previousWidget = widgetStack.Last();
-        if (previousWidget) {
-            widgetStack.Remove(previousWidget);
-            DisplayInGameWidget(previousWidget, UGameplayStatics::IsGamePaused(this));
-        }
-    }
+	if (widgetStack.Num() > 0) {
+		previousWidget = widgetStack.Last();
+		if (previousWidget) {
+			widgetStack.Remove(previousWidget);
+			DisplayInGameWidget(previousWidget, UGameplayStatics::IsGamePaused(this));
+		}
+	}
 }
 
 bool UANSUIPlayerSubsystem::TryGetActionsFromKey(const FKey& key, TArray<FUIActionTag>& outActionsTag)
 {
-    const UCommonUIInputSettings* inputSett = GetInputSettings();
-    const TArray<FUIInputAction> actionsList = inputSett->GetUIInputActions();
-    bool bFound = false;
-    for (const FUIInputAction& action : actionsList) {
-        for (const FUIActionKeyMapping& mapping : action.KeyMappings) {
-            if (mapping.Key == key) {
-                outActionsTag.Add(action.ActionTag);
-                bFound = true;
-            }
-        }
-    }
-    return bFound;
+	const UCommonUIInputSettings* inputSett = GetInputSettings();
+	const TArray<FUIInputAction> actionsList = inputSett->GetUIInputActions();
+	bool bFound = false;
+	for (const FUIInputAction& action : actionsList) {
+		for (const FUIActionKeyMapping& mapping : action.KeyMappings) {
+			if (mapping.Key == key) {
+				outActionsTag.Add(action.ActionTag);
+				bFound = true;
+			}
+		}
+	}
+	return bFound;
 }
 
 bool UANSUIPlayerSubsystem::TryGetKeysForAction(const FUIActionTag& UIAction, TArray<FKey>& outKeys)
 {
-    const UCommonUIInputSettings* inputSett = GetInputSettings();
-    const TArray<FUIInputAction> actionsList = inputSett->GetUIInputActions();
-    bool bFound = false;
-    for (const FUIInputAction& action : actionsList) {
+	const UCommonUIInputSettings* inputSett = GetInputSettings();
+	const TArray<FUIInputAction> actionsList = inputSett->GetUIInputActions();
+	bool bFound = false;
+	for (const FUIInputAction& action : actionsList) {
 
-        if (action.ActionTag == UIAction) {
-            outKeys.Empty();
-            for (const auto& keyMap : action.KeyMappings) {
-                outKeys.Add(keyMap.Key);
-            }
-            bFound = true;
-        }
-    }
-    return bFound;
+		if (action.ActionTag == UIAction) {
+			outKeys.Empty();
+			for (const auto& keyMap : action.KeyMappings) {
+				outKeys.Add(keyMap.Key);
+			}
+			bFound = true;
+		}
+	}
+	return bFound;
 }
 
 UCommonUIInputSettings* UANSUIPlayerSubsystem::GetInputSettings() const
 {
-    return GetMutableDefault<UCommonUIInputSettings>();
+	return GetMutableDefault<UCommonUIInputSettings>();
 }
 
 UANSUIConfigComponent* UANSUIPlayerSubsystem::GetUIConfig() const
 {
-    APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
-    if (playerController) {
-        return playerController->FindComponentByClass<UANSUIConfigComponent>();
-    }
-    return nullptr;
+	APlayerController* playerController = UGameplayStatics::GetPlayerController(this, 0);
+	if (playerController) {
+		return playerController->FindComponentByClass<UANSUIConfigComponent>();
+	}
+	return nullptr;
 }
 
 UTexture2D* UANSUIPlayerSubsystem::GetIconByTag(FGameplayTag iconTag)
 {
-    const UANSUIConfigComponent* UISetting = GetUIConfig();
+	const UANSUIConfigComponent* UISetting = GetUIConfig();
 
-    if (!UISetting) {return nullptr;}
+	if (!UISetting) { return nullptr; }
 
-    const UDataTable* IconsByTag = UISetting->GetIconsByTag();
-    if (!IconsByTag) {
-        UE_LOG(LogTemp, Error, TEXT("Remember to set your UI Icons By Tag! - UANSUIPlayerSubsystem::GetIconByTag"));
-        return nullptr;
-    }
+	const UDataTable* IconsByTag = UISetting->GetIconsByTag();
+	if (!IconsByTag) {
+		UE_LOG(LogTemp, Error, TEXT("Remember to set your UI Icons By Tag! - UANSUIPlayerSubsystem::GetIconByTag"));
+		return nullptr;
+	}
 
-    for (const auto& row : IconsByTag->GetRowMap()) {
-        FANSIcons* icon = (FANSIcons*)(row.Value);
+	for (const auto& row : IconsByTag->GetRowMap()) {
+		FANSIcons* icon = (FANSIcons*)(row.Value);
 
-        if (!icon) {
-            UE_LOG(LogTemp, Error, TEXT("Wrong DB Type! - UANSUIPlayerSubsystem::GetIconByTag "));
-            return nullptr;
-        }
-        if (iconTag == icon->IconTag) {
-            return icon->Icon;
-        }
-    }
+		if (!icon) {
+			UE_LOG(LogTemp, Error, TEXT("Wrong DB Type! - UANSUIPlayerSubsystem::GetIconByTag "));
+			return nullptr;
+		}
+		if (iconTag == icon->IconTag) {
+			return icon->Icon;
+		}
+	}
 
-    return nullptr;
+	return nullptr;
 }
 
 bool UANSUIPlayerSubsystem::TryGetActionConfig(FUIActionTag actionName, const ECommonInputType& inputType, FANSActionConfig& outAction)
 {
-    const UCommonUIInputSettings* inputSettings = GetInputSettings();
+	const UCommonUIInputSettings* inputSettings = GetInputSettings();
 
-    const TArray<FUIInputAction> actionsList = inputSettings->GetUIInputActions();
-    const FUIInputAction* action = actionsList.FindByPredicate([actionName](const FUIInputAction& Action) { return Action.ActionTag == actionName; });
+	const TArray<FUIInputAction> actionsList = inputSettings->GetUIInputActions();
+	const FUIInputAction* action = actionsList.FindByPredicate([actionName](const FUIInputAction& Action) { return Action.ActionTag == actionName; });
 
-    if (!action) {
-        UE_LOG(LogTemp, Error, TEXT("Remember to set your UI Actions in Common UI Input Settings"));
-        return false;
-    }
+	if (!action) {
+		UE_LOG(LogTemp, Error, TEXT("Remember to set your UI Actions in Common UI Input Settings"));
+		return false;
+	}
 
-    outAction.Action = actionName;
-    outAction.UIName = action->DefaultDisplayName;
+	outAction.Action = actionName;
+	outAction.UIName = action->DefaultDisplayName;
 
-    for (const auto& keymap : action->KeyMappings) {
-        if (inputType == ECommonInputType::Gamepad && keymap.Key.IsGamepadKey() || inputType == ECommonInputType::MouseAndKeyboard && !keymap.Key.IsGamepadKey()) {
-            outAction.KeyIcon = GetCurrentPlatformIconForKey(keymap.Key);
-            return true;
-        }
-    }
+	for (const auto& keymap : action->KeyMappings) {
+		if (inputType == ECommonInputType::Gamepad && keymap.Key.IsGamepadKey() || inputType == ECommonInputType::MouseAndKeyboard && !keymap.Key.IsGamepadKey()) {
+			outAction.KeyIcon = GetCurrentPlatformIconForKey(keymap.Key);
+			return true;
+		}
+	}
 
-    UE_LOG(LogTemp, Warning, TEXT("Remember to set your Icons! -UANSNavbarComponent::TryGetActionFromKey "));
-    return false;
+	UE_LOG(LogTemp, Warning, TEXT("Remember to set your Icons! -UANSNavbarComponent::TryGetActionFromKey "));
+	return false;
 }
 
 class UTexture2D* UANSUIPlayerSubsystem::GetIconForUIAction(FUIActionTag actionName, const ECommonInputType& inputType)
 {
-    FANSActionConfig outConfig;
-    UANSUIPlayerSubsystem::TryGetActionConfig(actionName, inputType, outConfig);
-    return outConfig.KeyIcon;
+	FANSActionConfig outConfig;
+	UANSUIPlayerSubsystem::TryGetActionConfig(actionName, inputType, outConfig);
+	return outConfig.KeyIcon;
 }
 
 class UTexture2D* UANSUIPlayerSubsystem::GetCurrentPlatformIconForKey(const FKey& key)
 {
-    const FString platform = UGameplayStatics::GetPlatformName();
-    return GetIconForKey(key, platform);
+	const FString platform = UGameplayStatics::GetPlatformName();
+	return GetIconForKey(key, platform);
 }
 
 class UTexture2D* UANSUIPlayerSubsystem::GetIconForKey(const FKey& key, const FString& platform)
 {
-    const UANSUIConfigComponent* UISetting = GetUIConfig();
+	const UANSUIConfigComponent* UISetting = GetUIConfig();
 
-    if (!IsValid(UISetting)) {
-        UE_LOG(LogTemp, Error, TEXT("Remember to add a UI Config Component to your Player Controller! -UANSNavbarComponent::GetIconByTag "));
-        return nullptr;
-    }
-    const UDataTable* platformIcons = UISetting->GetKeysConfigForPlatform(platform);
-    if (!platformIcons) {
-        UE_LOG(LogTemp, Error, TEXT("Remember to set your UI Icons! -UANSNavbarComponent::GetIconByTag "));
-        return nullptr;
-    }
+	if (!IsValid(UISetting)) {
+		UE_LOG(LogTemp, Error, TEXT("Remember to add a UI Config Component to your Player Controller! -UANSNavbarComponent::GetIconByTag "));
+		return nullptr;
+	}
+	const UDataTable* platformIcons = UISetting->GetKeysConfigForPlatform(platform);
+	if (!platformIcons) {
+		UE_LOG(LogTemp, Error, TEXT("Remember to set your UI Icons! -UANSNavbarComponent::GetIconByTag "));
+		return nullptr;
+	}
 
-    for (const auto& row : platformIcons->GetRowMap()) {
-        FANSKeysIconConfig* iconConfig = (FANSKeysIconConfig*)(row.Value);
-        if (iconConfig && iconConfig->Key == key) {
-            return iconConfig->KeyIcon;
-        }
-    }
-    UE_LOG(LogTemp, Warning, TEXT("Remember to set your Keys!! -UANSNavbarComponent::GetIconForKey "));
-    return nullptr;
+	for (const auto& row : platformIcons->GetRowMap()) {
+		FANSKeysIconConfig* iconConfig = (FANSKeysIconConfig*)(row.Value);
+		if (iconConfig && iconConfig->Key == key) {
+			return iconConfig->KeyIcon;
+		}
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Remember to set your Keys!! -UANSNavbarComponent::GetIconForKey "));
+	return nullptr;
 }
 
 UANSWidgetInteractionComponent* UANSUIPlayerSubsystem::GetLocalInteractionComponent() const

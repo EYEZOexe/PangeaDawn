@@ -53,7 +53,7 @@ AACFAIController::AACFAIController(const FObjectInitializer& ObjectInitializer)
     BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackBoardComp"));
     CommandsManagerComp = CreateDefaultSubobject<UACFCommandsManagerComponent>(TEXT("CommandManager"));
     TargetingComponent = CreateDefaultSubobject<UATSAITargetComponent>(TEXT("TargetComp"));
-  //  CombatBehaviorComponent = CreateDefaultSubobject<UACFCombatBehaviourComponent>(TEXT("CombatBehav"));
+    CombatBehaviorComponent = CreateDefaultSubobject<UACFCombatBehaviourComponent>(TEXT("CombatBehav"));
     ThreatComponent = CreateDefaultSubobject<UACFThreatManagerComponent>(TEXT("ThreatManager"));
 }
 
@@ -200,7 +200,7 @@ void AACFAIController::HandleMaxThreatUpdated_Implementation(AActor* newMax)
 void AACFAIController::BeginPlay()
 {
     Super::BeginPlay();
-    CombatBehaviorComponent = FindComponentByClass<UACFCombatBehaviourComponent>();
+   // CombatBehaviorComponent = FindComponentByClass<UACFCombatBehaviourComponent>();
 }
 
 void AACFAIController::EndPlay(const EEndPlayReason::Type reason)

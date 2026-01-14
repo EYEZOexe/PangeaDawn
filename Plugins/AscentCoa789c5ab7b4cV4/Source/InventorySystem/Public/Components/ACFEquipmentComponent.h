@@ -3,7 +3,6 @@
 #pragma once
 
 #include "ACFInventoryComponent.h"
-#include "ACFInventoryTypes.h"
 #include "ACFItemTypes.h"
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
@@ -22,7 +21,7 @@ class UACFStorageComponent;
 class AACFWeaponActor;
 
 USTRUCT(BlueprintType)
-struct FEquippedItem : public FFastArraySerializerItem {
+struct INVENTORYSYSTEM_API FEquippedItem : public FFastArraySerializerItem {
 	GENERATED_BODY()
 
 public:
@@ -98,7 +97,7 @@ public:
 };
 
 USTRUCT(BlueprintType)
-struct FEquipment : public FFastArraySerializer {
+struct INVENTORYSYSTEM_API FEquipment : public FFastArraySerializer {
 	GENERATED_BODY()
 
 public:
@@ -596,6 +595,7 @@ protected:
     void SetEquippedItemsVisible(bool bVisible);
 
 private:
+	
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_Equipment)
 	FEquipment Equipment;
 

@@ -20,7 +20,7 @@
 #include <GameFramework/DamageType.h>
 #include <GameplayAbilitySpecHandle.h>
 #include <GameplayTagContainer.h>
-#include <StructUtils/InstancedStruct.h>
+#include "InstancedStruct.h"
 #include <InputAction.h>
 
 #include "ACFActionTypes.generated.h"
@@ -28,13 +28,13 @@
 class UACFActionAbility;
 
 namespace ACF {
-	const FName Category = TEXT("Actions");
+	const FName AbilityRoot = TEXT("Actions");
 	const FName ExitTag = TEXT("Actions.AbilitySystem.ExitAction");
 	const FName EnterSubTag = TEXT("Actions.AbilitySystem.EnterSubState");
 	const FName ExitSubTag = TEXT("Actions.AbilitySystem.ExitSubState");
 	const FName NotableTag = TEXT("Actions.AbilitySystem.NotablePoint");
 	const FName FXTag = TEXT("Actions.AbilitySystem.PlayFX");
-
+	const FName CooldownTag = TEXT("Actions.AbilitySystem.Cooldown");
 	const FName StancesTag = TEXT("Stances");
 	const FName AimTag = TEXT("Stances.Aiming");
 	const FName BlockTag = TEXT("Stances.Blocking");
@@ -78,6 +78,12 @@ enum class EShootDirection : uint8 {
 	ECurrentTarget = 1 UMETA(DisplayName = "Towards Current Target"),
 };
 
+UENUM(BlueprintType)
+enum EACFCustomMovementMode : uint8
+{
+	Climbing	UMETA(DisplayName = "Climbing"),
+	Max			UMETA(Hidden),
+};
 /*
  * Struct used to track the state of a combo attack sequence.
  */
@@ -348,7 +354,7 @@ public:
 	FGameplayTag TriggeringTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = ACF)
-	TObjectPtr<class UACFActionAbility> Action;
+	TObjectPtr<class UACFGameplayAbility> Action;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = ACF)
 	int32 AbilityLevel;
@@ -521,7 +527,7 @@ struct FACFAbilityPayload
 	FHitResult HitResult;
 
 	UPROPERTY(BlueprintReadWrite, Category = ACF)
-	TObjectPtr<const AActor> TargetActor = nullptr;
+	TObjectPtr<AActor> TargetActor = nullptr;
 
 	UPROPERTY(BlueprintReadWrite, Category = ACF)
 	FGameplayTag PayloadTag;

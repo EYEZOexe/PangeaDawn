@@ -117,7 +117,8 @@ public:
 	FAIAgentsInfo()
 	{
 		AICharacter = nullptr;
-		// characterClass = AACFCharacter::StaticClass();
+		charLevel = 1;
+		characterClass = AACFCharacter::StaticClass();
 	};
 
 	//   FAIAgentsInfo(class AACFCharacter* inChar, class AACFAIController* inContr);
@@ -152,6 +153,9 @@ public:
 
 	UPROPERTY(SaveGame)
 	FName Guid;
+
+	UPROPERTY(SaveGame)
+	int32 charLevel;
 
 	TObjectPtr<class AACFAIController> GetController() const;
 };
@@ -209,7 +213,7 @@ public:
 
 	UACFDistanceActionCondition* GetDistanceBasedCondition() const
 	{
-		for (const auto condition : Conditions)
+		for (const auto& condition : Conditions)
 		{
 			UACFDistanceActionCondition* distanceCond = Cast<UACFDistanceActionCondition>(condition);
 			if (distanceCond)
@@ -261,24 +265,33 @@ struct FBaseUnit {
 	GENERATED_BODY()
 
 public:
-	FBaseUnit() {};
+	FBaseUnit() {
+		AIConfig = nullptr;
+		AILevel = 1;
+	};
 
 	FBaseUnit(const TSubclassOf<AACFCharacter>& inClass)
 	{
 		AIClassBP = TSoftClassPtr<AACFCharacter>(inClass.Get());
+		AIConfig = nullptr;
+		AILevel = 1;
 	}
 
 	FBaseUnit(const TSoftClassPtr<AACFCharacter>& inClass)
 	{
 		AIClassBP = inClass;
+		AIConfig = nullptr;
+		AILevel = 1;
 	}
 
-	/*
 	UPROPERTY(EditAnywhere, SaveGame, BlueprintReadWrite, Category = ACF)
-	TSoftObjectPtr<UACFCharacterDataAsset> AIConfig;*/
+	TSoftObjectPtr<UACFCharacterDataAsset> AIConfig;
 
 	UPROPERTY(EditAnywhere, SaveGame, BlueprintReadWrite, Category = ACF)
 	TSoftClassPtr<AACFCharacter> AIClassBP;
+
+	UPROPERTY(EditAnywhere, SaveGame, BlueprintReadWrite, Category = ACF)
+	int32 AILevel;
 
 	FORCEINLINE bool operator==(const FBaseUnit& Other) const
 	{
@@ -400,15 +413,15 @@ struct FACFAITicket
 
 	FACFAITicket()
 		: Target(nullptr)
-		  , AIController(nullptr)
-		  , TimeRemaining(0.f)
+		, AIController(nullptr)
+		, TimeRemaining(0.f)
 	{
 	}
 
 	FACFAITicket(AActor* InTarget, AController* InController, float InTime)
 		: Target(InTarget)
-		  , AIController(InController)
-		  , TimeRemaining(InTime)
+		, AIController(InController)
+		, TimeRemaining(InTime)
 	{
 	}
 
@@ -445,7 +458,7 @@ namespace ACF
 }
 
 /**
-* AI Routine 
+* AI Routine
 */
 
 USTRUCT(BlueprintType)
@@ -454,13 +467,13 @@ struct FRoutineTime
 	GENERATED_BODY()
 
 	/** 0..23 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ACF|RoutineTime",
-		meta=(ClampMin="0", ClampMax="23", UIMin="0", UIMax="23"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|RoutineTime",
+		meta = (ClampMin = "0", ClampMax = "23", UIMin = "0", UIMax = "23"))
 	uint8 Hour = 9;
 
 	/** 0..59 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,  Category="ACF|RoutineTime",
-		meta=(ClampMin="0", ClampMax="59", UIMin="0", UIMax="59"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|RoutineTime",
+		meta = (ClampMin = "0", ClampMax = "59", UIMin = "0", UIMax = "59"))
 	uint8 Minute = 0;
 
 	/** Returns minutes since midnight [0..1439] */
@@ -485,21 +498,21 @@ struct FAIRoutineTask
 {
 	GENERATED_BODY()
 
-	public: 
+public:
 
 	FAIRoutineTask()
 	{
 		EntryGuid = FGuid::NewGuid();
 	}
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ACF|Routine")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|Routine")
 	FRoutineTime TaskTime;
 
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Instanced,Category="ACF|Routine")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "ACF|Routine")
 	UACFTask* RoutineTask = nullptr;
 
 	/** Stable unique id for this entry (used instead of array index). */
-	UPROPERTY(BlueprintReadOnly, Category="ACF|Routine")
+	UPROPERTY(BlueprintReadOnly, Meta = (IgnoreForMemberInitializationTest), Category = "ACF|Routine")
 	FGuid EntryGuid;
 };
 

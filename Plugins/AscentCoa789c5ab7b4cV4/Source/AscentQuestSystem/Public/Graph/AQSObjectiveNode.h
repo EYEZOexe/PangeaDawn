@@ -95,7 +95,7 @@ public:
 	{
 		bIsCompleted = bInCompleted;
 		if (NodeState == ENodeState::Enabled && bInCompleted) {
-			CompleteNode();
+			//CompleteNode();
 			DeactivateNode();
 		}
 	}

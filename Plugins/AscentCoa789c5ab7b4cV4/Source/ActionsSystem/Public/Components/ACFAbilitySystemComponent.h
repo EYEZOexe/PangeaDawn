@@ -19,12 +19,13 @@ class UARSStatisticsComponent;
 class ACharacter;
 class UAnimInstance;
 class UACFAbilitySet;
+class UACFGameplayAbility;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionStarted, FGameplayTag, abilityTag);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActionEnded, FGameplayTag, abilityTag);
 
 /*
- * Component that extends UAbilitySystemComponent to manage ACF-style modular action abilities.
+ * Component that extends UAbilitySystemComponent to manage modular action abilities.
  * Handles action triggering, priority logic, ability buffering, and moveset-based ability granting.
  */
 UCLASS(ClassGroup = (ACF), DisplayName = "ACF Ability Component", Blueprintable, meta = (BlueprintSpawnableComponent))
@@ -46,14 +47,14 @@ public:
 	UFUNCTION(BlueprintCallable, DisplayName = "TriggerActionAbility", Category = ACF)
 	bool TriggerAction(UPARAM(DisplayName = "AbilityTag") FGameplayTag ActionState, EActionPriority Priority = EActionPriority::ELow, bool bCanBeStored = false);
 
-		/*
-	 * Tries to trigger the action with the provided tag.
-	 * @param ActionState The tag of the action to trigger.
-	 * @param Payload The payload data to pass to the ability.
-	 * @param Priority Priority level of the action.
-	 * @param bCanBeStored If true, the action will be stored if it can't be executed immediately.
-	 * @return True if the action was successfully triggered.
-	 */
+	/*
+ * Tries to trigger the action with the provided tag.
+ * @param ActionState The tag of the action to trigger.
+ * @param Payload The payload data to pass to the ability.
+ * @param Priority Priority level of the action.
+ * @param bCanBeStored If true, the action will be stored if it can't be executed immediately.
+ * @return True if the action was successfully triggered.
+ */
 	UFUNCTION(BlueprintCallable, Category = "ACF|Actions")
 	bool TriggerActionWithPayload(FGameplayTag AbilityTag, const FACFAbilityPayload& Payload, EActionPriority Priority /*= EActionPriority::ELow*/, bool bCanBeStored /*= false*/);
 
@@ -104,7 +105,7 @@ public:
 	 * @return The handle of the granted ability.
 	 */
 	UFUNCTION(BlueprintCallable, Category = ACF)
-	FGameplayAbilitySpecHandle GrantActionAbility(const FActionAbilityConfig& abilitySet, FGameplayTag movesetTag = FGameplayTag());
+	FGameplayAbilitySpecHandle GrantACFAbility(const FActionAbilityConfig& abilitySet, FGameplayTag movesetTag = FGameplayTag());
 
 	/*
 	 * Sends a gameplay event to all active abilities.
@@ -148,7 +149,7 @@ public:
 	 * @return True if matches.
 	 */
 	UFUNCTION(BlueprintPure, DisplayName = "IsPerforminAbility", Category = ACF)
-	FORCEINLINE bool IsInActionState(FGameplayTag state) const { return CurrentActionTag == state; }
+	FORCEINLINE bool IsInActionState(FGameplayTag state) const { return CurrentAbilityTag == state; }
 
 	/*
 	 * Checks if an action is currently being performed.
@@ -170,7 +171,7 @@ public:
 	 * @return Pointer to the last UACFActionAbility.
 	 */
 	UFUNCTION(BlueprintPure, Category = ACF)
-	UACFActionAbility* GetLastActivatedAbility() const { return LastActivatedAbility; }
+	UACFGameplayAbility* GetLastActivatedAbility() const { return LastActivatedAbility; }
 
 	/*
 	 * Converts an ability tag to its corresponding handle.
@@ -304,8 +305,8 @@ public:
 	void ExitCurrentAction();
 
 	void GrantInitialAbilities();
-	void OnAbilityStarted(TObjectPtr<UACFActionAbility> ability);
-	void OnAbilityEnded(TObjectPtr<UACFActionAbility> ability);
+	void OnAbilityStarted(TObjectPtr<UACFGameplayAbility> ability);
+	void OnAbilityEnded(TObjectPtr<UACFGameplayAbility> ability);
 
 	void EvaluateBuffer();
 
@@ -317,6 +318,11 @@ public:
 
 	void ResetComboCount(const FGameplayTag& comboTag);
 	/*END Combo Counters*/
+
+
+	void SetCurrentPriority(const int32 newPriority);
+
+	void SetPendingPriority(const int32 newPriority);
 private:
 	bool LaunchAbility(const FGameplayAbilitySpecHandle& handle, const EActionPriority priority);
 
@@ -332,11 +338,6 @@ private:
 		bool bCanBeStored,
 		const FGameplayEventData* OptionalEventData = nullptr);
 
-	UFUNCTION(Server, Reliable, Category = ACF)
-	void SetCurrentPriority(const int32 newPriority);
-
-	UFUNCTION(Server, Reliable, Category = ACF)
-	void SetPendingPriority(const int32 newPriority);
 
 	TObjectPtr<ACharacter> CharacterOwner;
 
@@ -349,13 +350,13 @@ private:
 	TObjectPtr<UACFActionAbility> PerformingAction;
 
 	UPROPERTY()
-	TObjectPtr<UACFActionAbility> LastActivatedAbility;
+	TObjectPtr<UACFGameplayAbility> LastActivatedAbility;
 
 	UPROPERTY()
 	FActionState CurrentActionState;
 
 	UPROPERTY(Replicated)
-	FGameplayTag CurrentActionTag;
+	FGameplayTag CurrentAbilityTag;
 
 	UPROPERTY(Replicated)
 	FGameplayTag StoredAction;
@@ -380,7 +381,9 @@ private:
 	void PrintStateDebugInfo(bool bIsEntring);
 
 protected:
+	friend class UACFGameplayAbility;
 	friend class UACFActionAbility;
+
 	// Called when the game starts
 	virtual void BeginPlay() override;
 

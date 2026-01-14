@@ -28,98 +28,106 @@
 
 void UADSGraphNode::ActivateNode()
 {
-    Super::ActivateNode();
+	Super::ActivateNode();
 
-    participant = Cast<UADSDialoguePartecipantComponent>(GatherPartecipant());
+ 	participant = Cast<UADSDialoguePartecipantComponent>(GatherPartecipant());
 
-    for (UAGSAction* action : ActivationActions) {
-        if (action) {
-            action->Execute(UGameplayStatics::GetPlayerController(this, 0), this);
-        }
-    }
+	for (UAGSAction* action : ActivationActions) {
+		if (action) {
+			action->Execute(UGameplayStatics::GetPlayerController(this, 0), this);
+		}
+	}
 
-    if (!participant) {
-        UE_LOG(LogTemp, Error, TEXT("Invalid Partecipant!"));
-        return;
-    }
+	if (!participant) {
+		UE_LOG(LogTemp, Error, TEXT("Invalid Partecipant!"));
+		return;
+	}
 
-    USkeletalMeshComponent* skeletal = participant->GetOwnerMesh();
+	USkeletalMeshComponent* skeletal = participant->GetOwnerMesh();
 
-    if (skeletal) {
-        participant->PlayAnimationOnCharacterOwner(Animation);
-        participant->PlayFacialAnimationOnCharacterOwner(FacialAnimation);
+	if (skeletal) {
+		participant->PlayAnimationOnCharacterOwner(Animation);
+		participant->PlayFacialAnimationOnCharacterOwner(FacialAnimation);
 
-        audioPlayer = UGameplayStatics::SpawnSoundAttached(SoundToPlay, skeletal, participant->GetVoiceSpawningSocketName());
-    }
+		if (SoundToPlay) {
+			audioPlayer = UGameplayStatics::SpawnSoundAttached(SoundToPlay, skeletal, participant->GetVoiceSpawningSocketName());
+			if (!audioPlayer) {
+				UE_LOG(LogTemp, Error, TEXT("Failed to spawn audio for node"));
+			}
+		}
+		else {
+			UE_LOG(LogTemp, Error, TEXT("SoundToPlay is null for node: %s"), *GetName());
+		}
+	}
 }
 
 void UADSGraphNode::DeactivateNode()
 {
-    if (audioPlayer->IsValidLowLevel() && audioPlayer->IsPlaying()) {
-        audioPlayer->Stop();
-    }
-    Super::DeactivateNode();
+	if (IsValid(audioPlayer) && audioPlayer->IsPlaying()) {
+		audioPlayer->Stop();
+	}
+	Super::DeactivateNode();
 }
 
 UADSDialoguePartecipantComponent* UADSGraphNode::GatherPartecipant() const
 {
-    const UADSDialogue* dialogue = Cast<UADSDialogue>(GetGraph());
+	const UADSDialogue* dialogue = Cast<UADSDialogue>(GetGraph());
 
-    if (!dialogue) {
-        return nullptr;
-    }
-    return Cast<UADSDialoguePartecipantComponent>(dialogue->FindPartecipant(PartecipantTag));
+	if (!dialogue) {
+		return nullptr;
+	}
+	return Cast<UADSDialoguePartecipantComponent>(dialogue->FindPartecipant(PartecipantTag));
 }
 
 UADSDialoguePartecipantComponent* UADSGraphNode::GetDialogueParticipant() const
 {
-    return participant.Get() ? participant.Get() : GatherPartecipant();
+	return participant.Get() ? participant.Get() : GatherPartecipant();
 }
 
-bool UADSGraphNode::TryGetParticipantVoiceConfig(FADSVoiceSettings& outVoiceConfig ) const
+bool UADSGraphNode::TryGetParticipantVoiceConfig(FADSVoiceSettings& outVoiceConfig) const
 {
-    return GEngine->GetEngineSubsystem<UADSDialogueSubsystem>()->TryGetParticipantVoiceConfig(outVoiceConfig, PartecipantTag);
+	return GEngine->GetEngineSubsystem<UADSDialogueSubsystem>()->TryGetParticipantVoiceConfig(outVoiceConfig, PartecipantTag);
 }
 
 
 
 bool UADSGraphNode::IsLocalPlayerPartecipant() const
 {
-    if (controller && GetDialogueParticipant()) {
-        return GetDialogueParticipant()->GetOwner() == controller->GetPawn();
-    }
-    return false;
+	if (controller && GetDialogueParticipant()) {
+		return GetDialogueParticipant()->GetOwner() == controller->GetPawn();
+	}
+	return false;
 }
 
 bool UADSGraphNode::CanBeActivated(APlayerController* inController)
 {
-    controller = inController;
+	controller = inController;
 
-    return true;
+	return true;
 }
 
 #if WITH_EDITOR
 
 FText UADSGraphNode::GetNodeTitle() const
 {
-    if (PartecipantTag != FGameplayTag()) {
+	if (PartecipantTag != FGameplayTag()) {
 
-        return FText::FromString(UADSDialogueFunctionLibrary::ExtractLastStringFromGameplayTag(PartecipantTag));
-    }
-    return FText::FromString("Set Participant Tag!");
+		return FText::FromString(UADSDialogueFunctionLibrary::ExtractLastStringFromGameplayTag(PartecipantTag));
+	}
+	return FText::FromString("Set Participant Tag!");
 }
 
 FText UADSGraphNode::GetParagraphTitle() const
 {
-    const FString final = Text.ToString().Left(30);
-    return FText::FromString(final);
+	const FString final = Text.ToString().Left(30);
+	return FText::FromString(final);
 }
 
 void UADSGraphNode::InitializeNode()
 {
-    Super::InitializeNode();
-    const UADSDialogue* dialogue = Cast<UADSDialogue>(GetGraph());
-    PartecipantTag = dialogue->GetDefaultParticipantTag();
+	Super::InitializeNode();
+	const UADSDialogue* dialogue = Cast<UADSDialogue>(GetGraph());
+	PartecipantTag = dialogue->GetDefaultParticipantTag();
 }
 
 #endif
