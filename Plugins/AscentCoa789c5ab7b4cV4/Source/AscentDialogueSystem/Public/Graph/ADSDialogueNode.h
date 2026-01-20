@@ -47,6 +47,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "ADS|Camera")
 	FDialogueCinematic CameraSettings;
 
+
 	virtual void ActivateNode() override;
 
 	/**

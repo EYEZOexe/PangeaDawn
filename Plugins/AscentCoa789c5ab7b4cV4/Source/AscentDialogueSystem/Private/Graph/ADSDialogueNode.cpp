@@ -19,8 +19,13 @@ void UADSDialogueNode::ActivateNode()
 	Super::ActivateNode();
 
 	if (participant) {
-
-		participant->SetCamera(CameraSettings);
+		if (participant && controller && CameraSettings.CinematicType == EDialogueCinematicType::CameraActor && CameraSettings.CameraActor.Get()) {
+			controller->SetViewTargetWithBlend(CameraSettings.CameraActor.Get(), CameraSettings.BlendTime);
+		}
+		else {
+			participant->SetCamera(CameraSettings);
+		}
+	
 		if (ShouldAutoProgress())
 		{
 			const float AudioDuration = CalculateNodeDuration();
@@ -79,6 +84,7 @@ TArray<UADSDialogueResponseNode*>  UADSDialogueNode::GetAllValidAnswers(APlayerC
 	}
 	return outResponses;
 }
+
 
 bool UADSDialogueNode::CanBeActivated(APlayerController* inController)
 {

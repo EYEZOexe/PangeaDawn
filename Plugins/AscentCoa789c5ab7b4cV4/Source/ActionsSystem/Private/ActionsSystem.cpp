@@ -17,8 +17,8 @@ void FActionsSystem::StartupModule()
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::NotableTag);
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::FXTag);
 
-    UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::Category);
-
+    UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AbilityRoot);
+   // UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::CooldownTag);
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AimTag);
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::BlockTag);
 }

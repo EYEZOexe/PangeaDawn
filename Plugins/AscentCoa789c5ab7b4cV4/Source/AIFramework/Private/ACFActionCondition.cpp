@@ -7,18 +7,31 @@
 #include "ARSFunctionLibrary.h"
 #include "ARSStatisticsComponent.h"
 #include "Game/ACFFunctionLibrary.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/Controller.h"
+#include "ATSBaseTargetComponent.h"
+#include "Logging.h"
 
 
-bool UACFDistanceActionCondition::IsConditionMet_Implementation(const AACFCharacter* character)
-  {
-	if (!character)
+bool UACFDistanceActionCondition::IsConditionMet_Implementation(const APawn* character)
+{
+	if (!character) {
+		UE_LOG(ACFAILog, Warning, TEXT("No character found - UACFDistanceActionCondition"), *character->GetName());
 		return false;
+	}
 
-	const AACFCharacter* target = Cast<AACFCharacter>(character->GetTarget());
+	const AController* aiController = character->GetController();
+	AACFCharacter* target = nullptr;
+	if (aiController) {
+		const UATSBaseTargetComponent* targetComp = aiController->FindComponentByClass<UATSBaseTargetComponent>();		
+		if (targetComp) {
+			target = Cast<AACFCharacter>(targetComp->GetCurrentTarget());
+		}
+	}
 
-	if ( !target)
+	if (!target) {
 		return false;
-
+	}
 	switch (ConditionType)
 	{
 	case EConditionType::EAbove:
@@ -37,27 +50,34 @@ bool UACFDistanceActionCondition::IsConditionMet_Implementation(const AACFCharac
 
 }
 
-bool UACFStatisticActionCondition::IsConditionMet_Implementation(const AACFCharacter* character)
+bool UACFStatisticActionCondition::IsConditionMet_Implementation(const APawn* character)
 {
-	if (!character)
-		return false;
+	if (!character) {
+		UE_LOG(ACFAILog, Warning, TEXT("No character found - UACFStatisticActionCondition"), *character->GetName());
 
-	if (!UARSFunctionLibrary::IsValidStatisticTag(StatisticTag))
 		return false;
+	}
 
-	const float statValue = character->GetStatisticsComponent()->GetNormalizedValueForStatitstic(StatisticTag);
+	const UARSStatisticsComponent* statComp = character->FindComponentByClass<UARSStatisticsComponent>();
+
+	if (!statComp) {
+		UE_LOG(ACFAILog, Warning, TEXT("No Statistics Component found on character %s - UACFStatisticActionCondition"), *character->GetName());
+		return false;
+	}
+
+	const float statValue = statComp->GetNormalizedValueForStatitstic(StatisticTag);
 
 	switch (ConditionType)
 	{
 	case EConditionType::EAbove:
-            return statValue  > StatisticValuePercentage / 100.f;
+		return statValue > StatisticValuePercentage / 100.f;
 		break;
 	case EConditionType::EBelow:
-            return statValue < StatisticValuePercentage / 100.f;
+		return statValue <= StatisticValuePercentage / 100.f;
 		break;
 	case EConditionType::EEqual:
-            return (statValue > StatisticValuePercentage / 100.f - NearlyEqualAcceptance || 
-				statValue < StatisticValuePercentage / 100.f +NearlyEqualAcceptance);
+		return (statValue > StatisticValuePercentage / 100.f - NearlyEqualAcceptance ||
+			statValue < StatisticValuePercentage / 100.f + NearlyEqualAcceptance);
 		break;
 	}
 

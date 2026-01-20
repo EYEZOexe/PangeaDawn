@@ -120,14 +120,14 @@ public:
 	 * @param Location The world location to place the structure.
 	 * @param Rotation The rotation to apply to the structure.
 	 */
-	UFUNCTION(Server, Reliable, Category = ACF)
+	UFUNCTION(Server, Reliable,BlueprintCallable,Category = ACF)
 	void ServerBuild(const FPrimaryAssetId& Id, const FVector& Location, const FRotator& Rotation);
 
 	/**
 	 * Server-side function to dismantle a buildable
 	 * @param buildable The actor to be dismantled
 	 */
-	UFUNCTION(Server, Reliable, Category = ACF)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = ACF)
 	void Dismantle(AActor* buildable);
 
 	/**

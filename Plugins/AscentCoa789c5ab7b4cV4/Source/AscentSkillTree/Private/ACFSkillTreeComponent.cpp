@@ -167,7 +167,7 @@ bool UACFSkillTreeComponent::CanUnlockSkill(const FGameplayTag& SkillTreeTag, co
         OutResult = ECanUnlockSkillResult::AlreadyAtMaxLevel;
         return false;
     }
-    if (SkillPoints < RequiredPoints) {
+    if (GetSkillPoints() < RequiredPoints) {
         OutResult = ECanUnlockSkillResult::InsufficientSkillPoints;
         return false;
     }
@@ -200,7 +200,7 @@ bool UACFSkillTreeComponent::CanUnlockSkill(const FGameplayTag& SkillTreeTag, co
 
 void UACFSkillTreeComponent::AddSkillPoints_Implementation(int32 SkillPointsToAdd)
 {
-    SkillPoints += SkillPointsToAdd;
+    SetSkillPoints(GetSkillPoints() + SkillPointsToAdd);
     BroadcastSkillPointsChanged();
 }
 

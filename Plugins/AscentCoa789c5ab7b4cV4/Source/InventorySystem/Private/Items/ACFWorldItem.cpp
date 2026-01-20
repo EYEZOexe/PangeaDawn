@@ -69,18 +69,44 @@ void AACFWorldItem::AddCurrency(float currencyAmount)
 	}
 }
 
+// Implementation
 void AACFWorldItem::OnInteractedByPawn_Implementation(APawn* Pawn, const FString& interactionType)
 {
-	if (Pawn) {
-		TObjectPtr<UACFEquipmentComponent> equipComp = Pawn->FindComponentByClass<UACFEquipmentComponent>();
-		if (equipComp && StorageComponent) {
-			equipComp->MoveItemsFromInventory(StorageComponent->GetInventory(), StorageComponent);
-			equipComp->GatherCurrency(StorageComponent->GetCurrentCurrencyAmount(), StorageComponent);
-		}
-		if (bDestroyOnGather) {
-			Destroy();
-		}
+	if (!Pawn || !StorageComponent)
+	{
+		return;
 	}
+
+	UACFInventoryComponent* InventoryComp = GetInventoryComponentFromSource(Pawn);
+	if (InventoryComp)
+	{
+		InventoryComp->MoveItemsFromInventory(StorageComponent->GetInventory(), StorageComponent);
+		InventoryComp->GatherCurrency(StorageComponent->GetCurrentCurrencyAmount(), StorageComponent);
+	}
+
+	if (bDestroyOnGather)
+	{
+		Destroy();
+	}
+}
+
+TObjectPtr<UACFInventoryComponent> AACFWorldItem::GetInventoryComponentFromSource(APawn* Pawn) const
+{
+	switch (InventorySource)
+	{
+	case EInventorySource::Controller:
+		if (AController* PC = Pawn->GetController())
+		{
+			return PC->FindComponentByClass<UACFInventoryComponent>();
+		}
+		break;
+
+	case EInventorySource::Pawn:
+	default:
+		return Pawn->FindComponentByClass<UACFInventoryComponent>();
+	}
+
+	return nullptr;
 }
 
 void AACFWorldItem::OnLocalInteractedByPawn_Implementation(class APawn* Pawn, const FString& interactionType /*= ""*/)

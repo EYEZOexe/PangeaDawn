@@ -208,7 +208,7 @@ bool UACFTeamManagerSubsystem::AreTeamsFriendly(const FGameplayTag& TeamA, const
 
 bool UACFTeamManagerSubsystem::CanTeamDamageTeam(const FGameplayTag& AttackerTeam, const FGameplayTag& VictimTeam) const
 {
-    ETeamAttitude::Type Attitude = GetTeamAttitudeTowards(AttackerTeam, VictimTeam);
+    const ETeamAttitude::Type Attitude = GetTeamAttitudeTowards(AttackerTeam, VictimTeam);
 
     // Always can damage hostile teams
     if (Attitude == ETeamAttitude::Hostile) {

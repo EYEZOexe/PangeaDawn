@@ -41,10 +41,10 @@ void UACFSustainedChooserAction::ReleaseAction()
         ActionState = ESustainedActionState::EReleased;
 
         // Trigger another action via tag (like original UACFSustainedAction)
-        if (ReleaseActionTag.IsValid() && GetActionsManager())
+        if (ReleaseActionTag.IsValid() && GetACFAbilityComponent())
         {
             EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-            GetActionsManager()->TriggerAction(ReleaseActionTag, ReleaseActionPriority);
+            GetACFAbilityComponent()->TriggerAction(ReleaseActionTag, ReleaseActionPriority);
         }
     }
 }

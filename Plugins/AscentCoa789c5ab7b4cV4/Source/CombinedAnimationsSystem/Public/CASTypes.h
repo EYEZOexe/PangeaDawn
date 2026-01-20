@@ -27,7 +27,7 @@ struct FCombinedAnimConfig {
 public:
     FCombinedAnimConfig()
     {
-        CombinedAnimation = nullptr;
+        //CombinedAnimation = nullptr;
         MaxDistanceToStart = 450.f;
         MasterRequiredActionsSet = FGameplayTag::EmptyTag;
         KillSlaveAfterAnim = false;
@@ -39,7 +39,7 @@ public:
 
     /*The montage to be playd on master */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CAS")
-    UContextualAnimSceneAsset* CombinedAnimation;
+    TArray<UContextualAnimSceneAsset*> CombinedAnimation;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CAS")
     float MaxDistanceToStart = 450.f;

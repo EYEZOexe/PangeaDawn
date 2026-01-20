@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "ACFAITypes.h"
 #include "Game/ACFTypes.h"
+#include "Data/ACFBaseCombatBehaviorDataAsset.h"
 
 #include "ACFCombatBehaviorDataAsset.generated.h"
 
@@ -13,7 +14,7 @@
  * Data Asset describing how this AI should behave in Combat
  */
 UCLASS()
-class AIFRAMEWORK_API UACFCombatBehaviorDataAsset : public UPrimaryDataAsset {
+class AIFRAMEWORK_API UACFCombatBehaviorDataAsset : public UACFBaseCombatBehaviorDataAsset {
     GENERATED_BODY()
 
 public:
@@ -40,7 +41,4 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF")
     TMap<EAICombatState, FActionsChances> ActionByCombatState;
 
-    /*Generic conditionals action you can define by creating your own ActionCondition class*/
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF")
-    TArray<FConditions> ActionByCondition;
 };

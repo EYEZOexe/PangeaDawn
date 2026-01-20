@@ -73,6 +73,13 @@ namespace FACFTags
 }
 
 
+UENUM(BlueprintType)
+enum class EInventorySource : uint8
+{
+	Pawn        UMETA(DisplayName = "Pawn"),
+	Controller  UMETA(DisplayName = "Controller")
+};
+
 
 
 USTRUCT(BlueprintType)

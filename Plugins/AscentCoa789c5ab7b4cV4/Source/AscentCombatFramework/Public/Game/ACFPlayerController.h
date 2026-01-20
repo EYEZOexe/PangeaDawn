@@ -11,7 +11,7 @@
 
 class UACFTeamComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPossessedCharacterChanged, const class AACFCharacter*, character);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPossessedCharacterChanged, const class APawn*, pawn);
 
 
 /**

@@ -76,7 +76,7 @@ AACFCharacter::AACFCharacter(const FObjectInitializer& ObjectInitializer)
 	FadeComp = CreateDefaultSubobject<UCCMFadeableActorComponent>(TEXT("Materials Override Component"));
 	TeamComponent = CreateDefaultSubobject<UACFTeamComponent>(TEXT("TeamComponent"));
 	StimuliSource = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("StimuliSource"));
-
+	EffetsComp = CreateDefaultSubobject<UACFEffectsManagerComponent>(TEXT("Effects Comp"));
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Audio Component"));
@@ -98,7 +98,7 @@ AACFCharacter::AACFCharacter(const FObjectInitializer& ObjectInitializer)
 void AACFCharacter::PostInitProperties()
 {
 	Super::PostInitProperties();
-	EffetsComp = FindComponentByClass<UACFEffectsManagerComponent>();
+
 	LocomotionComp = Cast<UACFCharacterMovementComponent>(GetCharacterMovement());
 
 	if (!LocomotionComp) {
@@ -193,7 +193,9 @@ void AACFCharacter::InitializeCharacter()
 		if (EquipmentComp) {
 			EquipmentComp->SetMainMesh(GetMainMesh(), false);
 			if (!UALSFunctionLibrary::ShouldSaveActor(this) || UALSFunctionLibrary::IsNewGame(this)) {
-				EquipmentComp->InitializeStartingItems();
+				if (EquipmentComp->GetIsInitialized() == false) {
+					EquipmentComp->InitializeStartingItems();
+				}
 			}
 		}
 	}

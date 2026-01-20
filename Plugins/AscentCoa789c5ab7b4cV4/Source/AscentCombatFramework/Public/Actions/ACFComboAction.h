@@ -25,7 +25,7 @@ public:
     UFUNCTION(BlueprintPure, Category = ACF)
     int32 GetComboCounter() const
     {
-        return GetActionsManager()->GetComboCount(ActionTag);
+        return GetACFAbilityComponent()->GetComboCount(GetTriggeringTag());
     }
 
     /**
@@ -48,7 +48,7 @@ public:
     UFUNCTION(BlueprintCallable, Category = ACF)
     void ForceComboCounter(int32 val)
     {
-        GetActionsManager()->SetComboCounter(ActionTag, val);
+        GetACFAbilityComponent()->SetComboCounter(GetTriggeringTag(), val);
     }
 
     /**

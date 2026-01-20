@@ -8,11 +8,12 @@
 #include "ACFGASTypes.h"
 #include "Components/ACFInventoryComponent.h"
 #include "ACFAbilitySet.h"
-#include "ACFCombatBehaviorDataAsset.h"
+#include "ACFBaseCombatBehaviorDataAsset.h"
 
 #include "ACFCharacterDataAsset.generated.h"
 
 struct FStartingItem;
+struct FSkeletalMeshComponentData;
 
 
 /**
@@ -112,5 +113,5 @@ public:
 
 	/* Configuration of Combat abilities for this AI */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|AI")
-	UACFCombatBehaviorDataAsset* CombatBehaviour;
+	UACFBaseCombatBehaviorDataAsset* CombatBehaviour;
 };

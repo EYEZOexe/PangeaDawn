@@ -38,7 +38,7 @@ public:
 private: 
 
 	UFUNCTION()
-	void HandleCharacterPossessedChanged(const class AACFCharacter* newChar);
+	void HandleCharacterPossessedChanged(const class APawn* newChar);
 
 	/*UFUNCTION(BlueprintCallable, Category = ACF)*/
 	void InitHUD();

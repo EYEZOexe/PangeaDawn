@@ -20,6 +20,8 @@
 #include "ACFAITypes.h"
 #include <Components/SkeletalMeshComponent.h>
 #include <Animation/AnimInstance.h>
+#include "AbilitySystemComponent.h"
+#include "Data/ACFCharacterFragment.h"
 
 // Sets default values for this component's properties
 UACFCharacterInitializerComponent::UACFCharacterInitializerComponent()
@@ -27,7 +29,6 @@ UACFCharacterInitializerComponent::UACFCharacterInitializerComponent()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
-	bHasInitialized = false;
 	// ...
 }
 
@@ -96,10 +97,6 @@ void UACFCharacterInitializerComponent::InitFromDataAsset(UACFCharacterDataAsset
 		return;
 	}
 
-	if (bHasInitialized) {
-		UE_LOG(ACFAILog, Warning, TEXT("InitFromDataAsset called but component is already initialized"));
-		return;
-	}
 	CharacterDataAsset = charData;
 	//Trigger replication
 	CharacterDataAssetId = charData->GetPrimaryAssetId();
@@ -119,11 +116,25 @@ void UACFCharacterInitializerComponent::OnRep_CharacterDataAssetId()
 }
 
 
+void UACFCharacterInitializerComponent::ApplyFragmentsData()
+{
+	if (OwningPawn && CharacterDataAsset) {
+		for (UACFCharacterFragment* fragment : CharacterDataAsset->Fragments)
+		{
+			if (fragment) {
+				fragment->ApplyFragment(OwningPawn);
+			}
+		}
+	}
+}
+
 void UACFCharacterInitializerComponent::InternalHandleServerInit(int32 Level)
 {
-	ApplyAllMeshData();
+
 
 	if (OwningPawn && CharacterDataAsset) {
+
+
 		UACFGASAttributesComponent* AttributesComp = OwningPawn->FindComponentByClass<UACFGASAttributesComponent>();
 
 		if (AttributesComp) {
@@ -133,15 +144,10 @@ void UACFCharacterInitializerComponent::InternalHandleServerInit(int32 Level)
 			AttributesComp->InitializeAttributeSet();
 		}
 
-		// Initialize inventory with starting items
-		UACFEquipmentComponent* InventoryComp = OwningPawn->FindComponentByClass<UACFEquipmentComponent>();
-		if (InventoryComp) {
-			InventoryComp->SetStartingItems(CharacterDataAsset->StartingItems);
-		}
 		UACFAbilitySystemComponent* AbilityComp = OwningPawn->FindComponentByClass<UACFAbilitySystemComponent>();
 
 		if (AbilityComp) {
-			//AbilityComp->ClearAllAbilities();
+			AbilityComp->ClearAllAbilities();
 			AbilityComp->GrantAbilitySet(CharacterDataAsset->DefaultAbilitySet, FGameplayTag());
 			for (const auto& AbilitySet : CharacterDataAsset->MovesetAbilities) {
 				AbilityComp->GrantAbilitySet(AbilitySet.Value, AbilitySet.Key);
@@ -165,16 +171,23 @@ void UACFCharacterInitializerComponent::InternalHandleServerInit(int32 Level)
 			OwningPawn->SetCharacterPortrait(CharacterDataAsset->CharacterPortrait);
 		}
 		OwningPawn->SetCharacterName(CharacterDataAsset->ChatacterName);
+
+		ApplyAllMeshData();
+
+	  	ApplyEquipData();
+
+		ApplyFragmentsData();
 	}
+
+
 	HandleServerInit();
-	bHasInitialized = true;
 }
 
 void UACFCharacterInitializerComponent::InternalHandleClientInit()
 {
 	ApplyAllMeshData();
+	ApplyFragmentsData();
 	HandleClientInit();
-	bHasInitialized = true;
 }
 
 void UACFCharacterInitializerComponent::HandleServerInit_Implementation()
@@ -217,6 +230,16 @@ void UACFCharacterInitializerComponent::OnDataAssetLoaded()
 	InternalHandleClientInit();
 }
 
+void UACFCharacterInitializerComponent::ApplyEquipData()
+{
+	// Initialize inventory with starting items
+	UACFEquipmentComponent* InventoryComp = OwningPawn->FindComponentByClass<UACFEquipmentComponent>();
+	if (InventoryComp) {
+		InventoryComp->SetStartingItems(CharacterDataAsset->StartingItems);
+		InventoryComp->RefreshEquipment();
+	}
+}
+
 void UACFCharacterInitializerComponent::ApplyAllMeshData()
 {
 	if (!CharacterDataAsset)
@@ -227,7 +250,7 @@ void UACFCharacterInitializerComponent::ApplyAllMeshData()
 	// Get all skeletal mesh components from the character
 	TArray<USkeletalMeshComponent*> SkeletalComponents;
 	GetOwner()->GetComponents<USkeletalMeshComponent>(SkeletalComponents);
-	
+
 	// Apply mesh data to components with matching tags
 	for (const FSkeletalMeshComponentData& MeshData : CharacterDataAsset->MeshComponents)
 	{
@@ -254,6 +277,13 @@ void UACFCharacterInitializerComponent::ApplyAllMeshData()
 }
 
 
+void UACFCharacterInitializerComponent::ApplyAppearanceFromDataAsset(UACFCharacterDataAsset* charData, bool bApplyEquip)
+{
+	CharacterDataAsset = charData;
+	ApplyAllMeshData();
+	ApplyEquipData();
+}
+
 void UACFCharacterInitializerComponent::ApplyMeshDataToComponent(USkeletalMeshComponent* Component,
 	const FSkeletalMeshComponentData& MeshData)
 {
@@ -264,6 +294,8 @@ void UACFCharacterInitializerComponent::ApplyMeshDataToComponent(USkeletalMeshCo
 	Component->SetSkeletalMesh(MeshData.SkeletalMesh);
 	if (MeshData.AnimInstance) {
 		Component->SetAnimInstanceClass(MeshData.AnimInstance);
+		// Force reinitialize the anim instance with the new mesh
+		Component->InitAnim(true);
 	}
 	// Apply materials
 	for (int32 i = 0; i < MeshData.MaterialOverrides.Num(); ++i)

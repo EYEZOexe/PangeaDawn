@@ -29,7 +29,7 @@ public:
      * List of action abilities to be granted.
      * These are a subclass of standard abilities, used for executing ACF Combo or contextual actions.
      */
-    UPROPERTY(EditAnywhere, meta = (TitleProperty = "TriggeringTag"), BlueprintReadWrite, Category = "ACF|Abilities")
+    UPROPERTY(EditAnywhere, meta = (TitleProperty = "TriggeringTag", DisplayName = "ACF Abilities"), BlueprintReadWrite, Category = "ACF|Abilities")
     TArray<FActionAbilityConfig> ActionAbilities;
 
     /**

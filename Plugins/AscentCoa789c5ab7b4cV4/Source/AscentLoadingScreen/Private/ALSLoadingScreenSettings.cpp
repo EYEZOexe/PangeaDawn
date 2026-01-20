@@ -4,5 +4,5 @@
 
 UALSLoadingScreenSettings::UALSLoadingScreenSettings()
 {
-    StartUpAttributes.bAllowInEarlyStartup = true;
+
 }

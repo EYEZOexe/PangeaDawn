@@ -23,14 +23,19 @@
 #include <SceneView.h>
 #include <PrimitiveDrawingUtils.h>
 #include <Logging.h>
+#include "Components/CapsuleComponent.h"
+#include "Components/ActorComponent.h"
+#include "ACFAITypes.h"
+#include "Data/ACFCharacterDataAsset.h"
+#include "Components/ACFBaseGroupComponent.h"
+#include "Data/ACFCharacterInitializerComponent.h"
 
 
 // Sets default values for this component's properties
 UACFGroupAIComponent::UACFGroupAIComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
 	bInBattle = false;
-	SetIsReplicatedByDefault(true);
+
 	DefaultSpawnOffset = FVector2D(150.f, 150.f);
 	AIToSpawn.Add(FAISpawnInfo());
 }
@@ -40,7 +45,7 @@ void UACFGroupAIComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UACFGroupAIComponent, groupLead);
 	DOREPLIFETIME(UACFGroupAIComponent, bInBattle);
-	DOREPLIFETIME(UACFGroupAIComponent, AICharactersInfo);
+
 }
 // Called when the game starts
 void UACFGroupAIComponent::BeginPlay()
@@ -74,21 +79,6 @@ void UACFGroupAIComponent::SendCommandToCompanions_Implementation(FGameplayTag c
 	Internal_SendCommandToAgents(command);
 }
 
-void UACFGroupAIComponent::SpawnGroup_Implementation()
-{
-	if (bAlreadySpawned && !bCanSpawnMultitpleTimes) {
-		return;
-	}
-
-	if (AICharactersInfo.Num() > 0) {
-		// Already spawned!
-		return;
-	}
-
-	Internal_SpawnGroup();
-	bAlreadySpawned = true;
-}
-
 void UACFGroupAIComponent::Internal_SpawnGroup()
 {
 	if (AIToSpawn.Num() == 0) {
@@ -96,10 +86,15 @@ void UACFGroupAIComponent::Internal_SpawnGroup()
 		return;
 	}
 
+	if (!GetOwner()->HasAuthority()) {
+		return;
+	}
+
 	TArray<FSoftObjectPath> AssetsToLoad;
 	for (const FAISpawnInfo& info : AIToSpawn) {
 		if (info.AIClassBP.ToSoftObjectPath().IsValid()) {
 			AssetsToLoad.Add(info.AIClassBP.ToSoftObjectPath());
+			AssetsToLoad.Add(info.AIConfig.ToSoftObjectPath());
 		}
 	}
 
@@ -111,14 +106,10 @@ void UACFGroupAIComponent::Internal_SpawnGroup()
 
 void UACFGroupAIComponent::OnAIAssetsLoaded()
 {
-	const UWorld* world = GetWorld();
-	if (!world) {
-		return;
-	}
+	Super::OnAIAssetsLoaded();
 
 	for (const FAISpawnInfo& aiSpawn : AIToSpawn) {
 		// safety check for the AIClassBP to ensure it is valid before adding to the load list
-
 		if (UClass* loadedClass = aiSpawn.AIClassBP.LoadSynchronous()) {
 			AddAgentToGroup(aiSpawn);
 		}
@@ -126,9 +117,6 @@ void UACFGroupAIComponent::OnAIAssetsLoaded()
 			UE_LOG(ACFAILog, Warning, TEXT("Failed to load class for spawn info!"));
 		}
 	}
-
-	bAlreadySpawned = true;
-	OnAgentsSpawned.Broadcast();
 }
 
 void UACFGroupAIComponent::DespawnGroup_Implementation(const bool bUpdateAIToSpawn /*= true*/, FGameplayTag actionToTriggerOnDyingAgent, float lifespawn /*= 1.f*/)
@@ -158,11 +146,7 @@ void UACFGroupAIComponent::DespawnGroup_Implementation(const bool bUpdateAIToSpa
 
 void UACFGroupAIComponent::InitAgents()
 {
-	for (int32 index = 0; index < AICharactersInfo.Num(); index++) {
-		if (AICharactersInfo.IsValidIndex(index)) {
-			InitAgent(AICharactersInfo[index], index);
-		}
-	}
+	Super::InitAgents();
 }
 
 void UACFGroupAIComponent::ServerAddCharacterToGroup_Implementation(AACFCharacter* character)
@@ -170,7 +154,7 @@ void UACFGroupAIComponent::ServerAddCharacterToGroup_Implementation(AACFCharacte
 	AddExistingCharacterToGroup(character);
 }
 
-void UACFGroupAIComponent::ServerRemoveCharacterToGroup_Implementation(AACFCharacter* character)
+void UACFGroupAIComponent::ServerRemoveCharacterFromGroup_Implementation(AACFCharacter* character)
 {
 	RemoveAgentFromGroup(character);
 }
@@ -185,22 +169,12 @@ void UACFGroupAIComponent::ServerAddAIToSpawn_Implementation(const FAISpawnInfo&
 
 void UACFGroupAIComponent::InitAgent(FAIAgentsInfo& agent, int32 childIndex)
 {
-	if (!agent.AICharacter) {
-		ensure(false);
-		return;
-	}
-
-	if (!agent.AICharacter->GetController()) {
-		agent.AICharacter->SpawnDefaultController();
-	}
-
-	agent.characterClass = (agent.AICharacter->GetClass());
-
 	if (!AIToSpawn.IsValidIndex(childIndex)) {
-		UE_LOG(ACFAILog, Error, TEXT("invalid AI Index! - UACFGroupAIComponent::InitAgent"), *this->GetName());
+		UE_LOG(ACFAILog, Error, TEXT("invalid AI Index! - UACFBaseGroupComponent::InitAgent"), *this->GetName());
 
 		return;
 	}
+	Super::InitAgent(agent, childIndex);
 
 	if (agent.GetController()) {
 		if (!groupLead) {
@@ -212,35 +186,13 @@ void UACFGroupAIComponent::InitAgent(FAIAgentsInfo& agent, int32 childIndex)
 		if (AIToSpawn[childIndex].PatrolPath) {
 			agent.GetController()->SetPatrolPath(AIToSpawn[childIndex].PatrolPath, true);
 		}
-	//	agent.AICharacter->GetEquipmentComponent()->InitializeStartingItems();
-
-		if (bOverrideAgentTeam) {
-			if (AController* Controller = agent.GetController()) {
-				// Try ACF interface first
-				if (Controller->Implements<UACFEntityInterface>()) {
-					IACFEntityInterface::Execute_AssignTeamToEntity(Controller, CombatTeam);
-				}
-				// Fallback to Unreal's GenericTeamAgent
-				else if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(Controller)) {
-					if (UWorld* World = Controller->GetWorld()) {
-						if (const UACFTeamManagerSubsystem* TeamSubsystem = World->GetSubsystem<UACFTeamManagerSubsystem>()) {
-							const FGenericTeamId GenericTeamId = TeamSubsystem->FromTagToTeamId(CombatTeam);
-							TeamAgent->SetGenericTeamId(GenericTeamId);
-						}
-					}
-				}
-			}
-		}
-
-		check(agent.characterClass);
-		const FName newGuid = agent.AICharacter->GetFName();
-		agent.Guid = newGuid;
-		if (!agent.AICharacter->Tags.Contains(newGuid)) {
-			agent.AICharacter->Tags.Add(newGuid);
-		}
+		//	agent.AICharacter->GetEquipmentComponent()->InitializeStartingItems();
 		agent.GetController()->SetGroupOwner(this, childIndex, bOverrideAgentPerception, bOverrideAgentTeam);
-		if (!agent.AICharacter->OnDeath.IsAlreadyBound(this, &UACFGroupAIComponent::HandleAgentDeath)) {
-			agent.AICharacter->OnDeath.AddDynamic(this, &UACFGroupAIComponent::HandleAgentDeath);
+		UACFCharacterInitializerComponent* initComp = agent.AICharacter->FindComponentByClass<UACFCharacterInitializerComponent>();
+
+		if (initComp && AIToSpawn[childIndex].AIConfig) {
+
+			initComp->InitFromDataAsset(AIToSpawn[childIndex].AIConfig.LoadSynchronous(), AIToSpawn[childIndex].AILevel);
 		}
 	}
 }
@@ -300,14 +252,6 @@ void UACFGroupAIComponent::ReplaceAIToSpawn(const TArray<FAISpawnInfo>& newAIs)
 	AIToSpawn = newAIs;
 }
 
-bool UACFGroupAIComponent::GetAgentByIndex(int32 index, FAIAgentsInfo& outAgent) const
-{
-	if (AICharactersInfo.IsValidIndex(index)) {
-		outAgent = AICharactersInfo[index];
-		return true;
-	}
-	return false;
-}
 
 void UACFGroupAIComponent::Internal_SendCommandToAgents(FGameplayTag command)
 {
@@ -327,11 +271,6 @@ void UACFGroupAIComponent::SetEnemyGroup(UACFGroupAIComponent* inEnemyGroup)
 	if (inEnemyGroup && UACFFunctionLibrary::AreEnemyTeams(GetWorld(), GetCombatTeam(), inEnemyGroup->GetCombatTeam())) {
 		enemyGroup = inEnemyGroup;
 	}
-}
-
-void UACFGroupAIComponent::HandleAgentDeath(class AACFCharacter* agent)
-{
-	OnChildDeath(agent);
 }
 
 FVector UACFGroupAIComponent::GetGroupCentroid() const
@@ -376,106 +315,6 @@ class AACFCharacter* UACFGroupAIComponent::RequestNewTarget(const AACFAIControll
 	return nullptr;
 }
 
-FPrimitiveSceneProxy* UACFGroupAIComponent::CreateSceneProxy()
-{
-	class FSpawnPreviewSceneProxy final : public FPrimitiveSceneProxy {
-	public:
-		FSpawnPreviewSceneProxy(const UACFGroupAIComponent* InComponent)
-			: FPrimitiveSceneProxy(InComponent)
-			, SpawnInfos(InComponent->GetAIToSpawn())
-		{
-		}
-
-		SIZE_T GetTypeHash() const override
-		{
-			static size_t UniquePointer;
-			return reinterpret_cast<size_t>(&UniquePointer);
-		}
-		virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily,
-			uint32 VisibilityMap, FMeshElementCollector& Collector) const override
-		{
-			const FMatrix& LocalToWorld = GetLocalToWorld();
-			const int32 CapsuleSides = 24;
-			const float CapsuleHalfHeight = 88.f;
-			const float CapsuleRadius = 34.f;
-
-			for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++) {
-				if (VisibilityMap & (1 << ViewIndex)) {
-					const FSceneView* View = Views[ViewIndex];
-					FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
-
-					for (const FAISpawnInfo& Info : SpawnInfos) {
-						const FTransform WorldTM = Info.SpawnTransform * FTransform(LocalToWorld);
-						const FVector Location = WorldTM.GetLocation();
-						const FVector X = WorldTM.GetUnitAxis(EAxis::X);
-						const FVector Y = WorldTM.GetUnitAxis(EAxis::Y);
-						const FVector Z = WorldTM.GetUnitAxis(EAxis::Z);
-
-						DrawWireCapsule(
-							PDI,
-							Location,
-							X,
-							Y,
-							Z,
-							FColor::Green,
-							CapsuleRadius,
-							CapsuleHalfHeight,
-							CapsuleSides,
-							SDPG_World);
-					}
-				}
-			}
-		}
-
-		virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override
-		{
-			FPrimitiveViewRelevance Result;
-			Result.bDrawRelevance = true;
-			Result.bDynamicRelevance = true;
-			Result.bShadowRelevance = false;
-			Result.bEditorPrimitiveRelevance = true;
-			return Result;
-		}
-
-		virtual uint32 GetMemoryFootprint(void) const override { return sizeof(*this) + GetAllocatedSize(); }
-		uint32 GetAllocatedSize(void) const { return FPrimitiveSceneProxy::GetAllocatedSize(); }
-
-	private:
-		TArray<FAISpawnInfo> SpawnInfos;
-	};
-
-	return new FSpawnPreviewSceneProxy(this);
-}
-
-FBoxSphereBounds UACFGroupAIComponent::CalcBounds(const FTransform& LocalToWorld) const
-{
-	FVector Origin = FVector::ZeroVector;
-
-	for (const FAISpawnInfo& Info : AIToSpawn) {
-		Origin += Info.SpawnTransform.GetLocation();
-	}
-
-	if (AIToSpawn.Num() > 0) {
-		Origin /= AIToSpawn.Num();
-	}
-
-	const float MaxExtent = 300.f;
-	return FBoxSphereBounds(Origin, FVector(MaxExtent), MaxExtent).TransformBy(LocalToWorld);
-}
-
-#if WITH_EDITOR
-void UACFGroupAIComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	MarkRenderStateDirty();
-}
-
-void UACFGroupAIComponent::PostEditComponentMove(bool bFinished)
-{
-	Super::PostEditComponentMove(bFinished);
-	MarkRenderStateDirty();
-}
-#endif
 
 uint8 UACFGroupAIComponent::AddAgentToGroup(const FAISpawnInfo& spawnInfo)
 {
@@ -620,14 +459,7 @@ AACFCharacter* UACFGroupAIComponent::GetAgentNearestTo(const FVector& location) 
 	return bestAgent;
 }
 
-FGameplayTag UACFGroupAIComponent::GetCombatTeam() const
-{
-	const UACFTeamComponent* teamComp = GetOwner()->FindComponentByClass<UACFTeamComponent>();
-	if (teamComp) {
-		return teamComp->GetTeam();
-	}
-	return FGameplayTag();
-}
+
 
 bool UACFGroupAIComponent::RemoveAgentFromGroup(AACFCharacter* character)
 {
@@ -716,12 +548,134 @@ void UACFGroupAIComponent::SetInBattle(bool inBattle, AActor* newTarget)
 
 void UACFGroupAIComponent::OnChildDeath(const AACFCharacter* character)
 {
+	Super::OnChildDeath(character);
 	const int32 index = AICharactersInfo.IndexOfByKey(character);
 	if (AICharactersInfo.IsValidIndex(index)) {
 		AICharactersInfo.RemoveAt(index);
 	}
-	OnAgentDeath.Broadcast(character);
 	if (AICharactersInfo.Num() == 0) {
 		OnAllAgentDeath.Broadcast();
 	}
+}
+
+
+#if WITH_EDITOR
+#include "Components/CapsuleComponent.h"
+
+void UACFGroupAIComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	const FName PropertyName = PropertyChangedEvent.GetPropertyName();
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(UACFGroupAIComponent, AIToSpawn))
+	{
+		RebuildSpawnPreviewCapsules();
+	}
+
+	MarkRenderStateDirty();
+}
+
+void UACFGroupAIComponent::PostEditComponentMove(bool bFinished)
+{
+	Super::PostEditComponentMove(bFinished);
+	MarkRenderStateDirty();
+}
+
+void UACFGroupAIComponent::RebuildSpawnPreviewCapsules()
+{
+	// Clear existing capsules
+	for (UCapsuleComponent* Capsule : SpawnPreviewCapsules)
+	{
+		if (Capsule)
+		{
+			Capsule->TransformUpdated.RemoveAll(this);
+			Capsule->DestroyComponent();
+		}
+	}
+	SpawnPreviewCapsules.Empty();
+
+	AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return;
+	}
+
+	// Create a capsule for each spawn info
+	for (int32 i = 0; i < AIToSpawn.Num(); ++i)
+	{
+		UCapsuleComponent* Capsule = NewObject<UCapsuleComponent>(Owner, NAME_None, RF_Transactional);
+		Capsule->SetupAttachment(this);
+		Capsule->SetRelativeTransform(AIToSpawn[i].SpawnTransform);
+		Capsule->SetCapsuleSize(34.f, 88.f);
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Capsule->SetHiddenInGame(true);
+		Capsule->bVisibleInReflectionCaptures = false;
+		Capsule->SetCastShadow(false);
+
+		// Visual settings for editor
+		Capsule->ShapeColor = FColor::Green;
+		Capsule->bDrawOnlyIfSelected = false;
+		Capsule->SetVisibility(true);
+
+		Capsule->RegisterComponent();
+
+		// Bind transform update
+		int32 SpawnIndex = i;
+		Capsule->TransformUpdated.AddWeakLambda(this, [this, SpawnIndex](USceneComponent* UpdatedComponent, auto, ETeleportType)
+			{
+				if (AIToSpawn.IsValidIndex(SpawnIndex))
+				{
+					AIToSpawn[SpawnIndex].SpawnTransform = UpdatedComponent->GetRelativeTransform();
+					if (AActor* Owner = GetOwner())
+					{
+						Owner->Modify();
+					}
+				}
+			});
+
+		SpawnPreviewCapsules.Add(Capsule);
+	}
+}
+
+
+
+void UACFGroupAIComponent::SyncSpawnInfoFromCapsules()
+{
+	for (int32 i = 0; i < SpawnPreviewCapsules.Num() && i < AIToSpawn.Num(); ++i)
+	{
+		if (SpawnPreviewCapsules[i])
+		{
+			AIToSpawn[i].SpawnTransform = SpawnPreviewCapsules[i]->GetRelativeTransform();
+		}
+	}
+}
+#endif
+
+void UACFGroupAIComponent::OnRegister()
+{
+	Super::OnRegister();
+
+#if WITH_EDITOR
+	if (GetWorld() && GetWorld()->WorldType == EWorldType::Editor)
+	{
+		RebuildSpawnPreviewCapsules();
+	}
+#endif
+}
+
+void UACFGroupAIComponent::OnUnregister()
+{
+#if WITH_EDITOR
+	for (UCapsuleComponent* Capsule : SpawnPreviewCapsules)
+	{
+		if (Capsule)
+		{
+			Capsule->TransformUpdated.RemoveAll(this);
+			Capsule->DestroyComponent();
+		}
+	}
+	SpawnPreviewCapsules.Empty();
+#endif
+
+	Super::OnUnregister();
 }

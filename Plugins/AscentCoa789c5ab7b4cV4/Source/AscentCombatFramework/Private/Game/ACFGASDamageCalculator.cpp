@@ -57,7 +57,7 @@ float UACFGASDamageCalculator::CalculateFinalDamage_Implementation(const FACFDam
     UACFDefenseStanceComponent* defComp = inDamageEvent.DamageReceiver->FindComponentByClass<UACFDefenseStanceComponent>();
     FGameplayTag outResponse;
 
-    if (defComp && inDamageEvent.HitResponseAction == defComp->GetBlockAction()) {
+    if (defComp && inDamageEvent.HitResponseAction == defComp->GetBlockAction() && defComp->GetBlockAction() != FGameplayTag::EmptyTag) {
         otherAffectedAttributes.Add(FAttributeData(BlockDamagedDataTag, finalStaggerDamage * defComp->GetDamagedStatisticMultiplier()));
     }
 

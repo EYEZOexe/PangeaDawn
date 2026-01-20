@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// // Copyright (C) Developed by Pask, Published by Dark Tower Interactive SRL 2025. All Rights Reserved.
 
 #pragma once
 
@@ -447,7 +447,6 @@ protected:
 	// UPROPERTY(Replicated)
 	FAimOffset aimOffest;
 
-	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode);
 
 	virtual void InitializeComponent() override;
 
@@ -471,4 +470,117 @@ private:
 
 	/* END DEPRECATED*/
 	FActiveGameplayEffectHandle activeEffect;
+
+
+	/* EXPERIMENTAL: CLIMB
+
+public:
+	UFUNCTION(Server, Reliable, Category = ACF)
+	void TryClimbing();
+
+	UFUNCTION(Server, Reliable, Category = ACF)
+	void CancelClimbing();
+
+	UFUNCTION(BlueprintPure, Category = ACF)
+	bool IsClimbing() const;
+
+	UFUNCTION(BlueprintPure, Category = ACF)
+	FVector GetClimbSurfaceNormal() const;
+
+	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override
+
+	private:
+
+	void SweepAndStoreWallHits();
+
+	bool IsWallClimbable(const FHitResult& Hit, const FVector& Forward) const noexcept;
+
+	bool EyeHeightTrace(float TraceDistance) const noexcept;
+
+	bool IsFacingSurface(float Steepness) const;
+
+	void OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity) override;
+
+	void PhysCustom(float DeltaTime, int32 Iterations) override;
+
+	UFUNCTION(Server, Reliable, Category = ACF)
+	void PhysClimbing(float DeltaTime, int32 Iterations);
+
+	void ComputeSurfaceInfo();
+
+	void ComputeClimbingVelocity(float DeltaTime);
+
+	bool ShouldStopClimbing();
+
+	void StopClimbing(float DeltaTime, int32 Iterations);
+
+	void MoveAlongClimbingSurface(float DeltaTime);
+
+	void SnapToClimbingSurface(float DeltaTime) const;
+
+	float GetMaxSpeed() const override;
+
+	float GetMaxAcceleration() const override;
+
+	FQuat GetClimbingRotation(float DeltaTime) const;
+
+	bool ClimbDownToFloor() const;
+
+	bool TryClimbUpLedge() const;
+
+	bool HasReachedEdge() const;
+
+	bool CanMoveToLedgeClimbLocation() const;
+
+	bool IsLocationWalkable(const UWorld* World, const FVector& LocationToCheck, const float WalkableHeight, const FCollisionQueryParams& QueryParams) const;
+	FHitResult CheckFloor(const UWorld* World, const FVector& Location, float MaxDistance, const FCollisionQueryParams& QueryParams) const;
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere)
+	int32 CollisionCapsuleRadius = 50;
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere)
+	int32 CollisionCapsuleHalfHeight = 72;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta=(ClampMin="1.0", ClampMax="75.0"))
+	float MinHorizontalDegreesToStartClimbing = 25;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "80.0"))
+	float ClimbingCollisionShrinkAmount = 30;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "10.0", ClampMax = "500.0"))
+	float MaxClimbingSpeed = 120.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "10.0", ClampMax = "2000.0"))
+	float MaxClimbingAcceleration = 380.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "3000.0"))
+	float BrakingDecelerationClimbing = 550.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "1.0", ClampMax = "12.0"))
+	int32 ClimbingRotationSpeed = 6;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "60.0"))
+	float ClimbingSnapSpeed = 4.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "80.0"))
+	float DistanceFromSurface = 45.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "1.0", ClampMax = "500.0"))
+	float FloorCheckDistance = 100.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "200.0"))
+	float ClimbUpVerticalOffset  = 160.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "200.0"))
+	float ClimbUpHorizontalOffset = 80.f;
+
+	UPROPERTY(Category = "Character Movement: Climbing", EditDefaultsOnly)
+	TObjectPtr<UAnimMontage> LedgeClimbMontage;
+
+	TArray<FHitResult> CurrentWallHits;
+	FCollisionQueryParams ClimbQueryParams;
+
+	UPROPERTY(replicated)
+	FVector CurrentClimbingNormal;
+	FVector CurrentClimbingPosition;
+
+	bool bWantsToClimb;*/
 };

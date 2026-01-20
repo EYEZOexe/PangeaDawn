@@ -145,6 +145,10 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = ACF)
 	void Respec();
 
+	UFUNCTION(BlueprintPure,Category = ACF)
+	int32 GetSkillPoints() const { return SkillPoints; }
+
+	void SetSkillPoints(int32 val) { SkillPoints = val; }
 protected:
 	// Current list of active skills (replicated)
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ActiveSkills, SaveGame, Category = ACF)
@@ -155,8 +159,8 @@ protected:
 	TArray<FSkillLevelData> SkillLevels;
 
 	// Current available skill points
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_SkillPoints, SaveGame, Category = ACF)
-	int32 SkillPoints = 0;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, ReplicatedUsing = OnRep_SkillPoints, SaveGame, Category = ACF)
+	int32 SkillPoints = 2;
 
 	// Maps skill node GUIDs to their ability and effect handles
 	UPROPERTY(BlueprintReadOnly, Category = ACF)

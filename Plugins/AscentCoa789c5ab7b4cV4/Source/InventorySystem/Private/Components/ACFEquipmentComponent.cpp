@@ -653,8 +653,8 @@ void UACFEquipmentComponent::EquipItemFromInventoryInSlot_Implementation(const F
 		itemActor->FinishSpawning(spawnTrans);
 	}
 
-	Equipment.AddEntry(FEquippedItem(item, selectedSlot, itemInstance, itemActor, item.ItemClass));
-	MarkItemOnInventoryAsEquipped(item.GetItemGuid(), true, selectedSlot);
+	Equipment.AddEntry(FEquippedItem(inItem, selectedSlot, itemInstance, itemActor, item.ItemClass));
+	MarkItemOnInventoryAsEquipped(inItem.GetItemGuid(), true, selectedSlot);
 
 	RefreshEquipment();
 	OnEquipmentChanged.Broadcast(Equipment);

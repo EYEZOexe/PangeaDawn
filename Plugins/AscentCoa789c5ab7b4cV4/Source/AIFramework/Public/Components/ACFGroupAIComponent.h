@@ -9,6 +9,8 @@
 #include <Components/SceneComponent.h>
 #include <Components/SplineComponent.h>
 #include <GameplayTagContainer.h>
+#include "ACFBaseGroupComponent.h"
+#include "Components/ActorComponent.h"
 
 #include "ACFGroupAIComponent.generated.h"
 
@@ -17,16 +19,13 @@ class FPrimitiveSceneProxy;
 struct FStreamableHandle;
 class AACFCharacter;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAgentDeath, const AACFCharacter*, character);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAllAgentDeath);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAgentsSpawned);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAgentsChanged);
+
 
 /**
  * * Component responsible for managing AI groups in ACF.
  */
 UCLASS(ClassGroup = (ACF), Blueprintable, meta = (BlueprintSpawnableComponent))
-class AIFRAMEWORK_API UACFGroupAIComponent : public UPrimitiveComponent {
+class AIFRAMEWORK_API UACFGroupAIComponent : public UACFBaseGroupComponent {
 	GENERATED_BODY()
 
 public:
@@ -46,13 +45,22 @@ protected:
 	 */
 	virtual void SetReferences();
 
-protected:
+	virtual void OnUnregister() override;
+	virtual void OnRegister() override;
+
 	/**
-	 * * Called when an AI character in the group dies.
-	 * @param character Pointer to the deceased AI character.
+	 * * Whether the AI group is currently engaged in combat.
 	 */
-	UFUNCTION()
-	virtual void OnChildDeath(const AACFCharacter* character);
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = ACF)
+	bool bInBattle;
+
+	/**
+	* * The maximum number of simultaneous AI agents allowed in the group.
+	*/
+	UPROPERTY(EditAnywhere, Savegame, BlueprintReadOnly, Category = "ACF|Spawn")
+	int32 MaxSimultaneousAgents = 20;
+protected:
+
 
 	/**
 	 * * The group name used for UI representation.
@@ -78,11 +86,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "ACF|AI Config")
 	bool bOverrideAgentTeam = true;
 
-	/**
-	 * * The combat team the AI group belongs to.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (Categories = "Teams"), Category = "ACF|AI Config")
-	FGameplayTag CombatTeam;
 
 	/**
 	 * * The default AI state for the group when spawned.
@@ -90,17 +93,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|AI Config")
 	FGameplayTag DefaultAiState;
 
-	/**
-	 * * The maximum number of simultaneous AI agents allowed in the group.
-	 */
-	UPROPERTY(EditAnywhere, Savegame, BlueprintReadOnly, Category = "ACF|Spawn")
-	int32 MaxSimultaneousAgents = 20;
 
-	/**
-	 * * Whether the group can spawn multiple times.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ACF|Spawn")
-	bool bCanSpawnMultitpleTimes = false;
 
 	/**
 	 * * Default offset for AI spawning locations.
@@ -120,62 +113,18 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = ACF)
 	TObjectPtr<class AActor> groupLead;
 
-	/**
-	 * * List of AI agents currently in the group.
-	 */
-	UPROPERTY(SaveGame, Replicated)
-	TArray<FAIAgentsInfo> AICharactersInfo;
+	virtual void OnComponentLoaded_Implementation() override;
 
-	/**
-	 * * Called when the component is fully loaded.
-	 */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = ACF)
-	void OnComponentLoaded();
-
-	/**
-	 * * Whether the AI group is currently engaged in combat.
-	 */
-	UPROPERTY(BlueprintReadOnly, Replicated, Category = ACF)
-	bool bInBattle;
+	virtual void OnChildDeath(const AACFCharacter* character) override;
 
 public:
 	/**
-	 * * Event triggered when an AI agent in the group dies.
-	 */
-	UPROPERTY(BlueprintAssignable, Category = ACF)
-	FOnAgentDeath OnAgentDeath;
-
-	/**
-	 * * Event triggered when all AI agents in the group are dead.
-	 */
-	UPROPERTY(BlueprintAssignable, Category = ACF)
-	FOnAllAgentDeath OnAllAgentDeath;
-
-	/**
-	 * * Event triggered when AI agents are spawned in the group.
-	 */
-	UPROPERTY(BlueprintAssignable, Category = ACF)
-	FOnAgentsSpawned OnAgentsSpawned;
-
-	/**
-	 * * Event triggered when AI agents are despawned.
-	 */
-	UPROPERTY(BlueprintAssignable, Category = ACF)
-	FOnAgentsSpawned OnAgentsDespawned;
-
-	/**
-	 * * Event triggered when AI agents change in the group.
-	 */
-	UPROPERTY(BlueprintAssignable, Category = ACF)
-	FOnAgentsChanged OnAgentsChanged;
-
-	/**
-	 * * Retrieves the nearest AI agent to a given location.
-	 * @param location The target location.
-	 * @return Pointer to the closest AI agent.
-	 */
+	* * Sets the battle state of the group.
+	* @param inBattle True to engage the group in battle, false otherwise.
+	* @param newTarget The target to engage if in battle.
+	*/
 	UFUNCTION(BlueprintCallable, Category = ACF)
-	class AACFCharacter* GetAgentNearestTo(const FVector& location) const;
+	void SetInBattle(bool inBattle, AActor* newTarget);
 
 	/**
 	 * * Checks if the group is currently engaged in battle.
@@ -185,18 +134,20 @@ public:
 	FORCEINLINE bool IsInBattle() const { return bInBattle; }
 
 	/**
-	 * * Retrieves the combat team of the group.
-	 * @return The combat team enum value.
+	 * * Retrieves the list of AI to spawn.
+	 * @return An array containing the AI spawn information.
 	 */
 	UFUNCTION(BlueprintPure, Category = ACF)
-	FGameplayTag GetCombatTeam() const;
+	TArray<FAISpawnInfo> GetAIToSpawn() const { return AIToSpawn; }
 
 	/**
-	 * * Retrieves the total number of agents in the group.
-	 * @return The number of agents in the group.
+	 * * Retrieves the nearest AI agent to a given location.
+	 * @param location The target location.
+	 * @return Pointer to the closest AI agent.
 	 */
-	UFUNCTION(BlueprintPure, Category = ACF)
-	FORCEINLINE int32 GetGroupSize() const { return AICharactersInfo.Num(); }
+	UFUNCTION(BlueprintCallable, Category = ACF)
+	class AACFCharacter* GetAgentNearestTo(const FVector& location) const;
+
 
 	/**
 	 * * Removes an agent from the group.
@@ -212,14 +163,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	void GetGroupAgents(TArray<FAIAgentsInfo>& outAgents) const { outAgents = AICharactersInfo; }
-
-	/**
-	 * * Sets the battle state of the group.
-	 * @param inBattle True to engage the group in battle, false otherwise.
-	 * @param newTarget The target to engage if in battle.
-	 */
-	UFUNCTION(BlueprintCallable, Category = ACF)
-	void SetInBattle(bool inBattle, AActor* newTarget);
 
 	/**
 	 * * Adds an AI to the spawn list from a class reference.
@@ -252,14 +195,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	void ReplaceAIToSpawn(const TArray<FAISpawnInfo>& newAIs);
 
-	/**
-	 * * Retrieves an agent by its index in the group.
-	 * @param index The index of the agent.
-	 * @param outAgent Output parameter containing the agent's information.
-	 * @return True if the agent was found, false otherwise.
-	 */
-	UFUNCTION(BlueprintCallable, Category = ACF)
-	bool GetAgentByIndex(int32 index, FAIAgentsInfo& outAgent) const;
 
 	/**
 	 * * Retrieves the enemy group associated with this group.
@@ -298,12 +233,6 @@ public:
 	void SendCommandToCompanions(FGameplayTag command);
 
 	/**
-	 * * Spawns the AI group.
-	 */
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = ACF)
-	void SpawnGroup();
-
-	/**
 	 * * Despawns the AI group.
 	 * @param bUpdateAIToSpawn Whether to update the AI spawn list.
 	 * @param actionToTriggerOnDyingAgent Optional action tag for dying agents.
@@ -326,12 +255,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	void SetAlertOtherTeamMembers(bool val) { bAlertOtherTeamMembers = val; }
 
-	/**
-	 * * Retrieves the list of AI to spawn.
-	 * @return An array containing the AI spawn information.
-	 */
-	UFUNCTION(BlueprintPure, Category = ACF)
-	TArray<FAISpawnInfo> GetAIToSpawn() const { return AIToSpawn; }
 
 	/**
 	 * * Gets the total number of AI configured to spawn.
@@ -340,12 +263,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = ACF)
 	int32 GetTotalAIToSpawnCount() const;
 
-	/**
-	 * * Gets the total number of agents currently spawned.
-	 * @return The current agent count.
-	 */
-	UFUNCTION(BlueprintPure, Category = ACF)
-	int32 GetTotalAgentsCount() const { return AICharactersInfo.Num(); }
 
 	/**
 	 * * Adds an existing character to the AI group.
@@ -362,20 +279,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	void ReInitAgent(AACFCharacter* character);
 
-	/**
-	 * * Checks if a given character is already part of the group.
-	 * @param character Pointer to the character.
-	 * @return True if the character is in the group, false otherwise.
-	 */
-	UFUNCTION(BlueprintCallable, Category = ACF)
-	bool IsAlreadyInGroup(const AACFCharacter* character) const { return AICharactersInfo.Contains(character); }
-
-	/**
-	 * * Checks if multiple spawns are allowed for this group.
-	 * @return True if multiple spawns are enabled, false otherwise.
-	 */
-	UFUNCTION(BlueprintPure, Category = ACF)
-	bool CanSpawnMultitpleTimes() const { return bCanSpawnMultitpleTimes; }
 
 	/**
 	 * * Enables or disables multiple spawns for this group.
@@ -420,9 +323,17 @@ public:
 	void SetGroupName(FName val) { GroupName = val; }
 
 	/**
+ * * Checks if multiple spawns are allowed for this group.
+ * @return True if multiple spawns are enabled, false otherwise.
+ */
+	UFUNCTION(BlueprintPure, Category = ACF)
+	bool CanSpawnMultitpleTimes() const { return bCanSpawnMultitpleTimes; }
+
+
+	/**
 	 * * Initializes AI agents within the group.
 	 */
-	void InitAgents();
+	virtual void InitAgents() override;
 
 
 	//RPC VERSION FOR MULTIPLAYER!
@@ -431,41 +342,51 @@ public:
 	void ServerAddCharacterToGroup(AACFCharacter* character);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = ACF)
-	void ServerRemoveCharacterToGroup(AACFCharacter* character);
+	void ServerRemoveCharacterFromGroup(AACFCharacter* character);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = ACF)
 	void ServerAddAIToSpawn(const FAISpawnInfo& spawnInfo);
 
-	//END RPC!
+	virtual void Internal_SpawnGroup() override;
 
-	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
-	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
+	//END RPC!
+#if WITH_EDITORONLY_DATA
+	/** Editor-only capsules for visualizing and editing spawn points */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCapsuleComponent>> SpawnPreviewCapsules;
+#endif
+
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void PostEditComponentMove(bool bFinished) override;
+
+	/** Rebuilds preview capsules from AIToSpawn array */
+	void RebuildSpawnPreviewCapsules();
+
+	/** Updates AIToSpawn transforms from capsule positions */
+	void SyncSpawnInfoFromCapsules();
+
 #endif
+
+
+protected: 
+
+	virtual uint8 AddAgentToGroup(const FAISpawnInfo& spawnInfo);
+	virtual void InitAgent(FAIAgentsInfo& agent, int32 childIndex) override;
+
+	void SetEnemyGroup(UACFGroupAIComponent* inEnemyGroup);
+
+
+	virtual void OnAIAssetsLoaded() override;
 private:
-	UPROPERTY(SaveGame)
-	bool bAlreadySpawned = false;
+
 
 	void Internal_SendCommandToAgents(FGameplayTag command);
 
 	UPROPERTY()
 	TObjectPtr<class UACFGroupAIComponent> enemyGroup;
 
-	void Internal_SpawnGroup();
 
-	uint8 AddAgentToGroup(const FAISpawnInfo& spawnInfo);
-	void InitAgent(FAIAgentsInfo& agent, int32 childIndex);
 
-	void SetEnemyGroup(UACFGroupAIComponent* inEnemyGroup);
 
-	UFUNCTION()
-	void HandleAgentDeath(class AACFCharacter* agent);
-
-	void OnAIAssetsLoaded();
-
-protected:
-	// Handle for managing async loading
-	TSharedPtr<FStreamableHandle> StreamableHandle;
 };

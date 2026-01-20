@@ -17,7 +17,7 @@ void FAIFramework::StartupModule()
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AICombat);
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AIReturnHome);
     UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AIFollowLead);
-    UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AIFollowLead);
+    UGameplayTagsManager::Get().AddNativeGameplayTag(ACF::AIRoutine);
 }
 
 void FAIFramework::ShutdownModule()

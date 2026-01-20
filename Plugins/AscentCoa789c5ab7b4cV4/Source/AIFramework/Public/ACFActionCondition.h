@@ -7,8 +7,12 @@
 
 #include "ACFActionCondition.generated.h"
 
+
+ class APawn;
+
+
 /**
- *
+ *  Defining custom conditions for AI Behaviours
  */
 
 UENUM(BlueprintType)
@@ -23,8 +27,8 @@ class AIFRAMEWORK_API UACFActionCondition : public UObject {
     GENERATED_BODY()
 public:
     UFUNCTION(BlueprintNativeEvent, Category = ACF)
-    bool IsConditionMet(const class AACFCharacter* character);
-    virtual bool IsConditionMet_Implementation(const class AACFCharacter* character) { return true; }
+    bool IsConditionMet(const APawn* character);
+    virtual bool IsConditionMet_Implementation(const APawn* character) { return true; }
 };
 
 UCLASS(NotBlueprintable, BlueprintType, EditInlineNew, HideCategories = ("DoNotShow"), CollapseCategories, AutoExpandCategories = ("ACF"))
@@ -37,7 +41,7 @@ protected:
     UPROPERTY(Instanced, EditDefaultsOnly, Category = "Conditions")
     TArray<UACFActionCondition*> OrConditions;
 
-    virtual bool IsConditionMet_Implementation(const class AACFCharacter* character) override
+    virtual bool IsConditionMet_Implementation(const APawn* character) override
     {
         for (auto& cond : OrConditions) {
             if (cond->IsConditionMet(character))
@@ -57,7 +61,7 @@ public:
     UPROPERTY(Instanced, EditDefaultsOnly, Category = "Conditions")
     TArray<UACFActionCondition*> AndConditions;
 
-    virtual bool IsConditionMet_Implementation(const class AACFCharacter* character) override
+    virtual bool IsConditionMet_Implementation(const APawn* character) override
     {
         for (auto& cond : AndConditions) {
             if (!cond->IsConditionMet(character))
@@ -85,7 +89,7 @@ protected:
     float NearlyEqualAcceptance = 25.f;
 
 public:
-    virtual bool IsConditionMet_Implementation(const class AACFCharacter* character) override;
+    virtual bool IsConditionMet_Implementation(const APawn* character) override;
 
     void SetContidionConfig(const EConditionType condType, const float inDistance, const float acceptance = 25.f)
     {
@@ -116,8 +120,8 @@ public:
     UPROPERTY(EditDefaultsOnly, meta = (ClampMin = "0.0", ClampMax = "100.0", UIMin = "0.0", UIMax = "100.0"), Category = "Conditions")
     float StatisticValuePercentage;
 
-    UPROPERTY(EditDefaultsOnly, meta = (EditCondition = "ConditionType != EConditionType::EEqual"), Category = "Conditions")
+    UPROPERTY(EditDefaultsOnly, meta = (EditCondition = "ConditionType == EConditionType::EEqual"), Category = "Conditions")
     float NearlyEqualAcceptance = 5.f;
 
-    virtual bool IsConditionMet_Implementation(const class AACFCharacter* character) override;
+    virtual bool IsConditionMet_Implementation(const APawn* character) override;
 };

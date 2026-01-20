@@ -120,7 +120,7 @@ void UACMCollisionManagerComponent::UpdateCollisions()
 							hitRes, StartPos, EndPos, orientation.Quaternion(), ObjectParams, FCollisionShape::MakeSphere(currentTrace.Value.Radius), Params);
 
 						if (!bHit && currentTrace.Value.bCrossframeAccuracy && !currentTrace.Value.bIsFirstFrame) {
-							const FRotator oldOrient = GetLineRotation(StartPos, EndPos);
+							const FRotator oldOrient = GetLineRotation(StartPos, currentTrace.Value.oldEndSocketPos);
 							bHit = world->SweepSingleByObjectType(
 								hitRes, StartPos, currentTrace.Value.oldEndSocketPos, oldOrient.Quaternion(), ObjectParams, FCollisionShape::MakeSphere(currentTrace.Value.Radius), Params);
 						}

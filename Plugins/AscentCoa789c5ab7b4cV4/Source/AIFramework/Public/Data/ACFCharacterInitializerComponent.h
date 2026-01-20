@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright (C) Developed by Pask, Published by Dark Tower Interactive SRL 2025. All Rights Reserved.
 
 #pragma once
 
@@ -19,16 +19,36 @@ public:
 	// Sets default values for this component's properties
 	UACFCharacterInitializerComponent();
 
+	/**
+	 * Initializes the character from a data asset at the specified level.
+	 * This applies stats, abilities, equipment, and appearance defined in the data asset.
+	 *
+	 * @param charData The character data asset containing initialization parameters.
+	 * @param Level The starting level for stat and ability scaling.
+	 */
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	void InitFromDataAsset(UACFCharacterDataAsset* charData, int32 Level);
 
-	// Apply all mesh data to the character
+	/**
+	 * Applies all mesh data (skeletal meshes, materials, morph targets) to the owning character.
+	 * Uses the currently cached mesh configuration.
+	 */
 	UFUNCTION(BlueprintCallable, Category = ACF)
 	void ApplyAllMeshData();
 
-	// Check if the owner has been initialized
-	UFUNCTION(BlueprintPure, Category = ACF)
-	bool IsInitialized() const { return bHasInitialized; }
+	/**
+	 * Applies visual appearance from a data asset to the owning character. 
+	 * NOT REPLICATED
+	 *
+	 * @param charData The character data asset containing appearance configuration.
+	 * @param bApplyEquip If true, also equips items defined in the data asset; if false, only applies mesh and material data.
+	 */
+	UFUNCTION(BlueprintCallable, Category = ACF)
+	void ApplyAppearanceFromDataAsset(UACFCharacterDataAsset* charData, bool bApplyEquip);
+
+	// Get DataAsset applied to the character
+	UFUNCTION(BlueprintCallable, Category = ACF)
+	UACFCharacterDataAsset* GetCharacterDataAsset() { return CharacterDataAsset; };
 
 protected:
 	// Called when the game starts
@@ -67,7 +87,7 @@ protected:
 		const FSkeletalMeshComponentData& MeshData);
 
 	// Local cached data asset (not replicated)
-	UPROPERTY(BlueprintReadOnly,EditAnywhere, Category = "ACF|Character Data")
+	UPROPERTY(BlueprintReadOnly, Category = "ACF|Character Data")
 	UACFCharacterDataAsset* CharacterDataAsset;
 
 	// Called when data asset ID is replicated
@@ -77,6 +97,9 @@ protected:
 	UPROPERTY(Category = ACF, BlueprintReadOnly)
 	AACFCharacter* OwningPawn;
 
+	void ApplyFragmentsData();
+	
+	void ApplyEquipData();
 private:
 
 	// Load data asset from ID
@@ -84,8 +107,12 @@ private:
 
 	void OnDataAssetLoaded();
 
+
+
 	bool bHasInitialized = false;
 
 	// Handle for async loading
 	TSharedPtr<struct FStreamableHandle> LoadHandle;
+
+
 };

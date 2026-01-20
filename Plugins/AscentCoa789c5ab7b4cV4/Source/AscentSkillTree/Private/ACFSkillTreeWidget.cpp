@@ -33,19 +33,14 @@ void UACFSkillTreeWidget::BuildFromNodes(const TArray<UAGSGraphNode*>& RootNodes
     const float HorizontalSpacing = BaseNodeDistance;
     const float VerticalSpacing = BaseNodeDistance * 0.75f;
 
-   // Create all widgets
+    // Create all widgets
     TSet<UACFBaseSkillNode*> Visited;
 
     const float HorizontalRootSpacing = BaseNodeDistance * 3.f;
     const int32 NumRoots = RootNodes.Num();
 
     const float TotalRootWidth = (NumRoots > 0) ? (NumRoots - 1) * HorizontalRootSpacing : 0.f;
-
-    const FVector2D ViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld());
-
-    const float CenterScreenX = (ViewportSize.X > 0.f) ? (ViewportSize.X * 0.5f) : TreeStartPosition.X;
-
-    const float StartX = CenterScreenX - (TotalRootWidth * 0.5f);
+    const float StartX = -(TotalRootWidth * 0.5f);
 
     for (int32 i = 0; i < NumRoots; i++)
     {
@@ -53,8 +48,48 @@ void UACFSkillTreeWidget::BuildFromNodes(const TArray<UAGSGraphNode*>& RootNodes
         if (RootNode)
         {
             FVector2D RootPosition = FVector2D(StartX + (i * HorizontalRootSpacing), TreeStartPosition.Y);
-
             RecursivelyBuildNode(RootNode, RootPosition, HorizontalSpacing, VerticalSpacing, Visited);
+        }
+    }
+
+    //Center nodes
+    if (NodeToWidgetMap.Num() > 0)
+    {
+        float MinTreeX = FLT_MAX;
+        float MaxTreeX = -FLT_MAX;
+
+        for (auto& Pair : NodeToWidgetMap)
+        {
+            UACFSkillNodeWidget* Widget = Pair.Value;
+            if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Widget->Slot))
+            {
+                float NodeX = CanvasSlot->GetPosition().X;
+                if (NodeX < MinTreeX) MinTreeX = NodeX;
+                if (NodeX > MaxTreeX) MaxTreeX = NodeX;
+            }
+        }
+
+
+        float CanvasWidth = CanvasPanel->GetCachedGeometry().GetLocalSize().X;
+
+        if (CanvasWidth <= 0.f)
+        {
+            const FVector2D ViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld());
+            CanvasWidth = ViewportSize.X;
+        }
+
+        const float CanvasCenter = CanvasWidth * 0.5f;
+        const float TreeCenter = (MinTreeX + MaxTreeX) * 0.5f;
+        const float CenterOffset = CanvasCenter - TreeCenter;
+
+        for (auto& Pair : NodeToWidgetMap)
+        {
+            UACFSkillNodeWidget* Widget = Pair.Value;
+            if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Widget->Slot))
+            {
+                FVector2D CurrentPos = CanvasSlot->GetPosition();
+                CanvasSlot->SetPosition(FVector2D(CurrentPos.X + CenterOffset, CurrentPos.Y));
+            }
         }
     }
 

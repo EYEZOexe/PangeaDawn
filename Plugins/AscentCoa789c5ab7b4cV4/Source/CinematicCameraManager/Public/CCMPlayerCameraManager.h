@@ -285,13 +285,7 @@ private:
 	UPROPERTY(Transient)
 	bool bIsUsingA = false;
 
-	ACameraActor* GetOrSpawnStub(bool bRequestA);
-	void MoveStubToPoint(ACameraActor* StubActor,
-		const FTransform& WorldTransform,
-		float TargetFOV) const;
 
-	// Implement this in your class (or reuse the one you already have)
-bool ResolveCameraPoint(AActor* OwnerWithPoints,
-		const FGameplayTag& CameraTag
-	) const;
+	UACFCameraPointComponent* ResolveCameraPoint(AActor* OwnerWithPoints, const FGameplayTag& CameraTag, bool& outBool) const;
+
 };

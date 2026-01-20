@@ -16,7 +16,7 @@ class UACFConsumable;
 struct FBaseItem;
 
 USTRUCT(BlueprintType)
-struct FStartingItem : public FBaseItem {
+struct INVENTORYSYSTEM_API FStartingItem : public FBaseItem {
 	GENERATED_BODY()
 
 public:
@@ -40,7 +40,7 @@ public:
 };
 
 USTRUCT(BlueprintType)
-struct FInventoryItem : public FBaseItem {
+struct INVENTORYSYSTEM_API FInventoryItem : public FBaseItem {
 	GENERATED_BODY()
 
 public:
@@ -49,6 +49,17 @@ public:
 	FInventoryItem(const FBaseItem& inItem);
 
 	FInventoryItem(const FStartingItem& inItem);
+
+	FInventoryItem(const FInventoryItem& inItem)
+	{
+		ItemGuid = inItem.ItemGuid;
+		ItemClass = inItem.ItemClass;
+		Count = inItem.Count;
+		bIsEquipped = inItem.bIsEquipped;        
+		EquipmentSlot = inItem.EquipmentSlot;   
+		DropChancePercentage = inItem.DropChancePercentage;  
+		ItemIndex = inItem.ItemIndex;            
+	};
 
 	/*Identifies if this item is equipped*/
 	UPROPERTY(SaveGame, BlueprintReadOnly, Category = ACF)
@@ -62,6 +73,10 @@ public:
 	/*Chance of this item of being dropped on death*/
 	UPROPERTY(SaveGame, BlueprintReadOnly, meta = (ClampMin = "0.0", ClampMax = "100.0"), Category = ACF)
 	float DropChancePercentage = 0.f;
+
+	/*Usable for modifiable indexes, not used by default*/
+	UPROPERTY(SaveGame, BlueprintReadOnly, meta = (ClampMin = "0.0", ClampMax = "100.0"), Category = ACF)
+	int32 ItemIndex = 0;
 
 	FORCEINLINE bool operator==(const FInventoryItem& Other) const
 	{
@@ -86,7 +101,7 @@ public:
 
 /** List of inventory items */
 USTRUCT(BlueprintType)
-struct FACFInventoryList : public FFastArraySerializer {
+struct INVENTORYSYSTEM_API FACFInventoryList : public FFastArraySerializer {
 	GENERATED_BODY()
 
 	FACFInventoryList()
@@ -139,6 +154,15 @@ struct FACFInventoryList : public FFastArraySerializer {
 		}
 	}
 
+	void SetItemIndex(const FGuid& item, int32 index)
+	{
+		FInventoryItem* itemPtr = Inventory.FindByKey(item);
+		if (itemPtr) {
+			itemPtr->ItemIndex = index;
+			MarkItemDirty(*itemPtr);
+		}
+	}
+
 public:
 	//~FFastArraySerializer contract
 	void PreReplicatedRemove(const TArrayView<int32> RemovedIndices, int32 FinalSize) {};
@@ -158,19 +182,20 @@ public:
 		return FFastArraySerializer::FastArrayDeltaSerialize<FInventoryItem, FACFInventoryList>(Inventory, DeltaParms, *this);
 	}
 
-	void AddEntry(FInventoryItem Instance)
+	void AddEntry(const FInventoryItem& Instance)
 	{
 		if (!Inventory.Contains(Instance)) {
-			//  Instance.Init(actorOwner);
-			Inventory.Add(Instance);
-			MarkItemDirty(Instance);
+			const int32 NewIndex = Inventory.Add(Instance);
+			MarkItemDirty(Inventory[NewIndex]); // oppure Inventory.Last()
 		}
 	}
 
-	void RemoveEntry(FInventoryItem Instance)
+	void RemoveEntry(const FInventoryItem& Instance)
 	{
-		Inventory.Remove(Instance);
-		MarkItemDirty(Instance);
+		const int32 Removed = Inventory.Remove(Instance);
+		if (Removed > 0) {
+			MarkArrayDirty();
+		}
 	}
 
 	void ChangeEntry(FInventoryItem Instance)
@@ -213,6 +238,7 @@ class INVENTORYSYSTEM_API UACFInventoryComponent : public UACFCurrencyComponent 
 public:
 	// Sets default values for this component's properties
 	UACFInventoryComponent();
+
 
 protected:
 	// Called when the game starts
@@ -340,6 +366,17 @@ public:
 	bool GetItemByIndex(const int32 index, FInventoryItem& outItem) const
 	{
 		return GetInventoryListConst().GetItemByIndex(index, outItem);
+	}
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "ACF|Setters")
+	void SetItemGridIndex(const FGuid& itemGuid, const int32 index);
+
+	UFUNCTION(BlueprintPure, Category = "ACF|Getters")
+	int32 GetItemGridIndex(const FGuid& itemGuid) const
+	{
+		FInventoryItem outItem;
+		GetInventoryListConst().GetItem(itemGuid, outItem);
+		return outItem.ItemIndex;
 	}
 
 	/**
@@ -490,7 +527,8 @@ public:
 	FOnItemRemoved OnItemRemoved;
 
 	const FACFInventoryList& GetInventoryListConst() const { return InventoryList; }
-
+	bool GetIsInitialized() const { return bIsInitialized; }
+	void SetIsInitialized(bool val) { bIsInitialized = val; }
 protected:
 	FACFInventoryList& GetInventoryList() { return InventoryList; }
 
@@ -502,7 +540,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Savegame, Category = "ACF|Inventory")
 	float MaxInventoryWeight = 180.f;
 
-	
+
 	/* The character's starting items*/
 	UPROPERTY(EditAnywhere, meta = (TitleProperty = "ItemClass"), BlueprintReadWrite, Category = ACF)
 	TArray<FStartingItem> StartingItems;
@@ -525,4 +563,7 @@ private:
 	void OnRep_Inventory();
 
 	TObjectPtr<AActor> actorOwner;
+
+	UPROPERTY(SaveGame)
+	bool bIsInitialized = false;
 };
