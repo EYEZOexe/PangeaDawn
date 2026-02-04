@@ -359,6 +359,8 @@ bool FBAGraphHandler::LinkExecWhenCreatedFromParameter(UEdGraphNode* NodeCreated
 							FBANodePinHandle OtherExecPin = OtherExecPins[0];
 							if (OtherExecPin->LinkedTo.Num() > 0)
 							{
+								UEdGraphPin* FirstLinkedTo = OtherExecPin->LinkedTo[0];
+
 								// if we aren't inserting and the exec pin has links, then don't do anything
 								if (!bInsert)
 								{
@@ -368,7 +370,7 @@ bool FBAGraphHandler::LinkExecWhenCreatedFromParameter(UEdGraphNode* NodeCreated
 								TArray<UEdGraphPin*> MyPinsInDirection = FBAUtils::GetExecPins(NodeCreated, OtherExecPin->Direction);
 								if (MyPinsInDirection.Num() > 0)
 								{
-									FBAUtils::TryCreateConnectionUnsafe(OtherExecPin->LinkedTo[0], MyPinsInDirection[0], EBABreakMethod::Always);
+									FBAUtils::TryCreateConnectionUnsafe(FirstLinkedTo, MyPinsInDirection[0], EBABreakMethod::Always);
 								}
 							}
 
@@ -3354,8 +3356,18 @@ void FBAGraphHandler::FormatAllEvents()
 		return FBAUtils::GetPinsByDirection(NodeA.Get(), EGPD_Input).Num() < FBAUtils::GetPinsByDirection(NodeB.Get(), EGPD_Input).Num();
 	};
 
-	const auto TopMostSorter = [](TWeakObjectPtr<UEdGraphNode> NodeA, TWeakObjectPtr<UEdGraphNode> NodeB)
+	const auto TopMostSorter = [](const TWeakObjectPtr<UEdGraphNode>& NodeA, const TWeakObjectPtr<UEdGraphNode>& NodeB)
 	{
+		if (!NodeA.IsValid())
+		{
+			return false;
+		}
+
+		if (!NodeB.IsValid())
+		{
+			return true;
+		}
+
 		return NodeA.Get()->NodePosY < NodeB.Get()->NodePosY;
 	};
 
@@ -3364,6 +3376,10 @@ void FBAGraphHandler::FormatAllEvents()
 	for (int i = 0; i < FormatAllColumns.Num(); ++i)
 	{
 		TArray<TWeakObjectPtr<UEdGraphNode>>& Column = FormatAllColumns[i];
+		Column.RemoveAll([](TWeakObjectPtr<UEdGraphNode>& Node)
+		{
+			return !Node.IsValid();
+		});
 
 		for (TWeakObjectPtr<UEdGraphNode> WeakPtr : Column)
 		{

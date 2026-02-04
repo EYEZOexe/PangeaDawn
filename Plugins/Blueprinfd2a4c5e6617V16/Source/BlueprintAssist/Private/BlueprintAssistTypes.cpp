@@ -73,7 +73,7 @@ void FBANodePinHandle::SetPin(UEdGraphPin* Pin)
 	if (Pin)
 	{
 		PinId = Pin->PinId;
-		Node = Pin->GetOwningNode();
+		Node = Pin->GetOwningNodeUnchecked();
 		PinType = Pin->PinType;
 		PinName = Pin->PinName;
 	}

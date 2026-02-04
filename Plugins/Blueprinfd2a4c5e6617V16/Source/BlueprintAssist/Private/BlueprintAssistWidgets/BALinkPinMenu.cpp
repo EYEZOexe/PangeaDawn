@@ -128,7 +128,7 @@ void SBALinkPinMenu::InitListItems(TArray<TSharedPtr<FPinLinkerStruct>>& Items)
 				FName PinName = Pin->GetFName();
 				SeenPinNames.FindOrAdd(PinName, 0) += 1;
 
-				FString PinUniqueName = FString::Printf(TEXT("%s_%d"), *PinName.ToString(), SeenPinNames[PinName]);
+				FString PinUniqueName = FString::Printf(TEXT("%s%d"), *PinName.ToString(), SeenPinNames[PinName]);
 
 				auto Item = MakeShareable(new FPinLinkerStruct(Pin,PinUniqueName));
 				Items.Add(Item);

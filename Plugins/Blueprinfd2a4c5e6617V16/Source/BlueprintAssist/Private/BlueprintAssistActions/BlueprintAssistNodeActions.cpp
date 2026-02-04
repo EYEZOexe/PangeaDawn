@@ -1086,6 +1086,11 @@ void FBANodeActions::LinkNodesBetweenWires()
 	UEdGraphPin* PinForHoveredWire = HoveredWire.From;
 	if (!PinForHoveredWire)
 	{
+		PinForHoveredWire = FBAUtils::GetHoveredPin(GraphHandler->GetGraphPanel());
+	}
+
+	if (!PinForHoveredWire)
+	{
 		return;
 	}
 

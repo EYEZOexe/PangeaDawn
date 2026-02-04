@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "4.5.3",
+	"VersionName": "4.6.0",
 	"FriendlyName": "BlueprintAssist",
 	"Description": "Adds support for mouseless blueprint creation and navigation",
 	"Category": "Editor",

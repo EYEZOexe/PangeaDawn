@@ -4,21 +4,22 @@
 
 #include "Commands/SMExtendedEditorCommands.h"
 #include "Graph/SMTextPropertyGraph.h"
-#include "Widgets/Text/SSMTextProperty.h"
-
+#include "SMEditorTextGraphLogging.h"
 #include "SMTextGraphPropertyVersion.h"
+#include "Widgets/Text/SSMTextProperty.h"
 
 #include "Graph/Nodes/SMGraphNode_Base.h"
 #include "Utilities/SMTextUtils.h"
 
 #include "SMNodeInstance.h"
 
-#include "FindInBlueprintManager.h"
-#include "ToolMenuSection.h"
 #include "Components/RichTextBlock.h"
 #include "Components/RichTextBlockDecorator.h"
+#include "FindInBlueprintManager.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Kismet2/CompilerResultsLog.h"
+#include "Misc/ScopeExit.h"
+#include "ToolMenuSection.h"
 
 #define LOCTEXT_NAMESPACE "SMTextPropertyNode"
 
@@ -165,6 +166,10 @@ void USMGraphK2Node_TextPropertyNode::SetPropertyDefaultsFromPin()
 		return;
 	}
 
+	ON_SCOPE_EXIT
+	{
+		bSettingPropertyDefaultsFromPin = false;
+	};
 	bSettingPropertyDefaultsFromPin = true;
 
 	if (USMNodeInstance* Template = GetOwningTemplate())
@@ -193,15 +198,12 @@ void USMGraphK2Node_TextPropertyNode::SetPropertyDefaultsFromPin()
 					if (OwningNode->IsBeingPasted() || OwningNode->IsPreCompiling())
 					{
 						// Pasting and recompiling will run all construction scripts.
-						bSettingPropertyDefaultsFromPin = false;
 						return;
 					}
 				}
 			}
 		}
 	}
-
-	bSettingPropertyDefaultsFromPin = false;
 }
 
 void USMGraphK2Node_TextPropertyNode::SetPinValueFromPropertyDefaults(bool bUpdateTemplateDefaults, bool bUseArchetype, bool bForce)
@@ -330,21 +332,33 @@ FSMTextGraphProperty* USMGraphK2Node_TextPropertyNode::GetTextGraphProperty(USMN
 	const FSMGraphProperty_Base* GraphProperty = GetPropertyNodeConstChecked();
 	if (FProperty* Property = GraphProperty->MemberReference.ResolveMember<FProperty>(Template->GetClass()))
 	{
-		if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property))
+		if (!Template->IsA(Property->GetOwner<UClass>()))
 		{
-			FScriptArrayHelper Helper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<uint8>(Template));
-			if (Helper.IsValidIndex(GraphProperty->ArrayIndex))
-			{
-				if (uint8* DefaultValue = Helper.GetRawPtr(GraphProperty->ArrayIndex))
-				{
-					TextGraphProperty = ArrayProperty->Inner->ContainerPtrToValuePtr<FSMTextGraphProperty>(DefaultValue);
-				}
-				check(TextGraphProperty);
-			}
+			// If a state class with this property is modified but not compiled, and the owning state machine is then compiled,
+			// the classes will briefly mismatch. Our text slate widget will make this call and the ContainerPtrToValuePtr
+			// will fail the class comparison check, so we cancel out early to avoid a crash.
+			
+			LDEDITOR_TEXTGRAPH_LOG_WARNING(TEXT("GetTextGraphProperty() failed due to a mismatched template class '%s' with a property class of '%s'. This can occur during a compile."),
+				*Template->GetClass()->GetName(), *Property->GetOwner<UClass>()->GetName());
 		}
 		else
 		{
-			TextGraphProperty = Property->ContainerPtrToValuePtr<FSMTextGraphProperty>(Template);
+			if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property))
+			{
+				FScriptArrayHelper Helper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<uint8>(Template));
+				if (Helper.IsValidIndex(GraphProperty->ArrayIndex))
+				{
+					if (uint8* DefaultValue = Helper.GetRawPtr(GraphProperty->ArrayIndex))
+					{
+						TextGraphProperty = ArrayProperty->Inner->ContainerPtrToValuePtr<FSMTextGraphProperty>(DefaultValue);
+					}
+					check(TextGraphProperty);
+				}
+			}
+			else
+			{
+				TextGraphProperty = Property->ContainerPtrToValuePtr<FSMTextGraphProperty>(Template);
+			}
 		}
 	}
 

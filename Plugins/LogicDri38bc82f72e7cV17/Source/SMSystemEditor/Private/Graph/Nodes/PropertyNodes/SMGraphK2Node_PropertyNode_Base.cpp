@@ -25,6 +25,7 @@
 #include "Internationalization/TextPackageNamespaceUtil.h"
 #include "Kismet2/CompilerResultsLog.h"
 #include "Kismet2/KismetEditorUtilities.h"
+#include "Misc/ScopeExit.h"
 #include "ScopedTransaction.h"
 #include "ToolMenu.h"
 #include "Utilities/SMIndexerUtils.h"
@@ -543,6 +544,11 @@ void USMGraphK2Node_PropertyNode_Base::SetPropertyDefaultsFromPin()
 	{
 		return;
 	}
+	
+	ON_SCOPE_EXIT
+	{
+		bSettingPropertyDefaultsFromPin = false;
+	};
 
 	bSettingPropertyDefaultsFromPin = true;
 	
@@ -574,7 +580,6 @@ void USMGraphK2Node_PropertyNode_Base::SetPropertyDefaultsFromPin()
 						if (OwningNode->IsBeingPasted() || OwningNode->IsPreCompiling())
 						{
 							// Pasting and recompiling will run all construction scripts.
-							bSettingPropertyDefaultsFromPin = false;
 							return;
 						}
 					}
@@ -582,8 +587,6 @@ void USMGraphK2Node_PropertyNode_Base::SetPropertyDefaultsFromPin()
 			}
 		}
 	}
-
-	bSettingPropertyDefaultsFromPin = false;
 }
 
 void USMGraphK2Node_PropertyNode_Base::SetPinValueFromPropertyDefaults(bool bUpdateTemplateDefaults, bool bUseArchetype, bool bForce)

@@ -121,6 +121,7 @@ FSMAdvancedPreviewScene::~FSMAdvancedPreviewScene()
 	{
 		// Only destroy context when we're no longer using any world.
 		GEngine->DestroyWorldContext(PreviewWorld);
+		WorldContext = nullptr;
 	}
 	DestroyPreviewWorld();
 
@@ -368,7 +369,10 @@ void FSMAdvancedPreviewScene::SetPreviewWorld(UWorld* InPreviewWorld)
 	{
 		PreviewWorld = InPreviewWorld;
 
-		WorldContext->SetCurrentWorld(PreviewWorld);
+		if (WorldContext)
+		{
+			WorldContext->SetCurrentWorld(PreviewWorld);
+		}
 		if (PreviewWorld != OriginalWorld)
 		{
 			GEngine->WorldAdded(PreviewWorld);
@@ -392,7 +396,7 @@ void FSMAdvancedPreviewScene::DestroyPreviewWorld()
 		GameInstance->Shutdown();
 	}
 
-	if (WorldContext->GameViewport != nullptr)
+	if (WorldContext && WorldContext->GameViewport != nullptr)
 	{
 		WorldContext->GameViewport->Viewport = nullptr;
 	}
@@ -613,8 +617,10 @@ void FSMAdvancedPreviewScene::OnPreviewObjectWorldRefreshRequested(USMPreviewObj
 		USMPreviewGameInstance* GameInstance = NewObject<USMPreviewGameInstance>(GEngine);
 		GameInstance->SetWorldContext(WorldContext);
 		OriginalWorld->SetGameInstance(GameInstance);
-		
-		WorldContext->OwningGameInstance = OriginalWorld->GetGameInstance();
+		if (WorldContext)
+		{
+			WorldContext->OwningGameInstance = OriginalWorld->GetGameInstance();
+		}
 	}
 }
 

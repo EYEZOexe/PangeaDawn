@@ -1793,16 +1793,16 @@ TSharedPtr<FKnotNodeTrack> FKnotTrackCreator::MakeKnotTracksForParameterPins(UEd
 	}
 
 	// remove any pins which has the same height and no collision
-	for (UEdGraphPin* LinkedPin : LinkedPins)
-	{
-		const FVector2D LinkedPinPos = FBAUtils::GetPinPos(GraphHandler, LinkedPin);
-
-		const bool bSameHeight = FMath::Abs(LinkedPinPos.Y - ParentPinPos.Y) < 5.f;
-		if (bSameHeight && !AnyCollisionBetweenPins(ParentPin, LinkedPin))
-		{
-			KnotTrack->LinkedTo.Remove(LinkedPin);
-		}
-	}
+	// for (UEdGraphPin* LinkedPin : LinkedPins)
+	// {
+	// 	const FVector2D LinkedPinPos = FBAUtils::GetPinPos(GraphHandler, LinkedPin);
+	//
+	// 	const bool bSameHeight = FMath::Abs(LinkedPinPos.Y - ParentPinPos.Y) < 5.f;
+	// 	if (bSameHeight && !AnyCollisionBetweenPins(ParentPin, LinkedPin))
+	// 	{
+	// 		KnotTrack->LinkedTo.Remove(LinkedPin);
+	// 	}
+	// }
 
 	if (KnotTrack->LinkedTo.Num() == 0)
 	{

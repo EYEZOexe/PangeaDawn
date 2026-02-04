@@ -533,6 +533,12 @@ bool FBAInputProcessor::BeginGroupMovement(const FKey& Key)
 		return false;
 	}
 
+	if (GIsTransacting) // when does this occur?!
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%hs - Failed to start group movement due to editor transacting"), __FUNCTION__);
+		return false;
+	}
+
 	// UE_LOG(LogTemp, Warning, TEXT("Hovered node %s"), *HoveredNode->ToString());
 
 	static const TSet<FName> BlockingWidgets = { "SButton", "SCheckBox" };

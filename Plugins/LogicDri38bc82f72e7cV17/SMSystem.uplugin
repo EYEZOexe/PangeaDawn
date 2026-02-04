@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 52,
-	"VersionName": "2.9.5.4fbae781",
+	"Version": 53,
+	"VersionName": "2.9.6.879b44b4",
 	"FriendlyName": "Logic Driver Pro",
 	"Description": "Create state machines in blueprints using graphs to define state and transition logic.",
 	"Category": "Editor",

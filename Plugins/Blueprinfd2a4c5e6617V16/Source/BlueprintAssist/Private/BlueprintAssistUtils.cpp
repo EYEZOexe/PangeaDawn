@@ -1006,10 +1006,23 @@ bool FBAUtils::IsLoopingPinLink(FPinLink& PinLink, EEdGraphPinDirection Directio
 
 UEdGraphNode* FBAUtils::GetExecutingNode(UEdGraphNode* Node)
 {
+	TSet<UEdGraphNode*> Visited;
+	return GetExecutingNode_Impl(Node, Visited);
+}
+
+UEdGraphNode* FBAUtils::GetExecutingNode_Impl(UEdGraphNode* Node, TSet<UEdGraphNode*> Visited)
+{
 	if (FBAUtils::IsNodeImpure(Node))
 	{
 		return Node;
 	}
+
+	if (Visited.Contains(Node))
+	{
+		return nullptr;
+	}
+
+	Visited.Add(Node);
 
 	const TArray<UEdGraphNode*> LinkedOutNodes = FBAUtils::GetLinkedNodes(Node, EGPD_Output);
 	const TArray<UEdGraphNode*> LinkedPureNodes = LinkedOutNodes.FilterByPredicate(IsNodeImpure);
@@ -1020,7 +1033,7 @@ UEdGraphNode* FBAUtils::GetExecutingNode(UEdGraphNode* Node)
 
 	for (UEdGraphNode* OutNode : LinkedOutNodes.FilterByPredicate(IsNodePure))
 	{
-		if (UEdGraphNode* ExecutingNode = GetExecutingNode(OutNode))
+		if (UEdGraphNode* ExecutingNode = GetExecutingNode_Impl(OutNode, Visited))
 		{
 			return ExecutingNode;
 		}
@@ -2207,6 +2220,34 @@ TSharedPtr<SWidget> FBAUtils::GetParentWidgetOfType(
 	check(Widget->GetParentWidget() != Widget)
 
 	TSharedPtr<SWidget> ReturnWidget = GetParentWidgetOfType(Widget->GetParentWidget(), ParentType, bCheckContains);
+	if (ReturnWidget.IsValid())
+	{
+		return ReturnWidget;
+	}
+
+	return nullptr;
+}
+
+TSharedPtr<SWidget> FBAUtils::GetParentWidgetOfTypeFast(TSharedPtr<SWidget> Widget, const FName& ParentType)
+{
+	if (!Widget.IsValid())
+	{
+		return nullptr;
+	}
+
+	if (IsWidgetOfTypeFast(Widget, ParentType))
+	{
+		return Widget;
+	}
+
+	if (!Widget->IsParentValid())
+	{
+		return nullptr;
+	}
+
+	check(Widget->GetParentWidget() != Widget)
+
+	TSharedPtr<SWidget> ReturnWidget = GetParentWidgetOfTypeFast(Widget->GetParentWidget(), ParentType);
 	if (ReturnWidget.IsValid())
 	{
 		return ReturnWidget;
@@ -3898,20 +3939,29 @@ bool FBAUtils::IsNodeBeingRenamed(TSharedPtr<SGraphNode> GraphNode)
 			return true;
 		}
 
-		// if an editable text box has keyboard focus
-		if (TSharedPtr<SWidget> KeyboardFocusedWidget = FSlateApplication::Get().GetKeyboardFocusedWidget())
-		{
-			if (FBAUtils::IsWidgetOfTypeFast(KeyboardFocusedWidget, "SEditableText"))
-			{
-				return true;
-			}
-		}
-
 		if (GraphNode->GetNodeObj()->GetCanRenameNode())
 		{
 			if (TSharedPtr<SInlineEditableTextBlock> TitleText = FIND_CHILD_WIDGET(GraphNode, SInlineEditableTextBlock))
 			{
 				return TitleText->IsInEditMode();
+			}
+		}
+
+		// Check if any inline editable text blocks are being edited inside the action menu 
+		if (TSharedPtr<SWidget> KeyboardFocusedWidget = FSlateApplication::Get().GetKeyboardFocusedWidget())
+		{
+			if (FBAUtils::IsWidgetOfTypeFast(KeyboardFocusedWidget, "SEditableText"))
+			{
+				if (TSharedPtr<SInlineEditableTextBlock> InlineEditable = FIND_PARENT_WIDGET(KeyboardFocusedWidget, SInlineEditableTextBlock))
+				{
+					if (InlineEditable->IsInEditMode())
+					{
+						if (FIND_PARENT_WIDGET(KeyboardFocusedWidget, SGraphActionMenu))
+						{
+							return true;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -4445,13 +4495,29 @@ bool FBAUtils::GetPinOffset(TSharedPtr<SGraphPanel> GraphPanel, UEdGraphPin* Pin
 
 TFunction<bool(UEdGraphPin&, UEdGraphPin&)> FBAUtils::GetHighestPinPredicate(TSharedPtr<SGraphPanel> GraphPanel)
 {
-	return [GraphPanel](UEdGraphPin& PinA, UEdGraphPin& PinB)
+	return [&GraphPanel](UEdGraphPin& PinA, UEdGraphPin& PinB)
 	{
 		FVector2D OffsetA(0, FLT_MAX);
 		FVector2D OffsetB(0, FLT_MAX);
 		GetPinOffset(GraphPanel, &PinA, OffsetA);
 		GetPinOffset(GraphPanel, &PinB, OffsetB);
 		return OffsetA.Y < OffsetB.Y;
+	};
+}
+
+TFunction<bool(UEdGraphPin&, UEdGraphPin&)> FBAUtils::GetHighestPinPredicate(TSharedPtr<FBAGraphHandler> GraphHandler)
+{
+	return [&GraphHandler](UEdGraphPin& PinA, UEdGraphPin& PinB)
+	{
+		return GraphHandler->GetPinY(&PinA) < GraphHandler->GetPinY(&PinB);
+	};
+}
+
+TFunction<bool(const FPinLink&, const FPinLink&)> FBAUtils::GetHighestPinLinkPredicate(TSharedPtr<FBAGraphHandler> GraphHandler)
+{
+	return [&GraphHandler](const FPinLink& PinA, const FPinLink& PinB)
+	{
+		return GraphHandler->GetPinY(PinA.From) < GraphHandler->GetPinY(PinB.From);
 	};
 }
 
