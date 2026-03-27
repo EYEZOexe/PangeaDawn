@@ -23,6 +23,21 @@ public class Pangea_Dawn : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
+		if (Target.Type == TargetType.Editor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[]
+			{
+				"UnrealEd",
+				"BlueprintGraph",
+				"GraphEditor",
+				"Kismet",
+				"KismetCompiler",
+				"NarrativeArsenal",
+				"NarrativeQuestEditor",
+				"NarrativeDialogueEditor"
+			});
+		}
+
 		PublicIncludePaths.AddRange(new string[] {
 			"Pangea_Dawn",
 			"Pangea_Dawn/Variant_Platforming",
