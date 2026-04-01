@@ -11,7 +11,6 @@
 
 class UALSLoadAndSaveComponent;
 class UPangeaCreatureDefinition;
-class UPangeaBreedableComponent;
 class UACFMountComponent;
 class UACFVaultComponent;
 
@@ -49,9 +48,6 @@ public:
 
 protected:
 	// Actor Components
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"), SaveGame)
-	TObjectPtr<UPangeaBreedableComponent> BreedableComponent;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UACFMountComponent> MountComponent;
 

@@ -2,7 +2,6 @@
 
 
 #include "Characters/PDDinosaurBase.h"
-#include "Components/PangeaBreedableComponent.h"
 #include "ACFMountComponent.h"
 #include "Actors/ACFCharacter.h"
 #include "Components/ACFQuadrupedMovementComponent.h"
@@ -11,13 +10,13 @@
 #include "Definitions/PangeaCreatureDefinition.h"
 #include "EditorCategoryUtils.h"
 #include "Components/ACFTeamComponent.h"
+#include "Interfaces/PDBreedableInterface.h"
 #include "Interfaces/PDTameableInterface.h"
 #include "Components/GameFrameworkComponentManager.h"
 
 
 APDDinosaurBase::APDDinosaurBase(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	BreedableComponent = CreateDefaultSubobject<UPangeaBreedableComponent>(TEXT("Pangea Breeding Component"));
 	MountComponent = CreateDefaultSubobject<UACFMountComponent>(TEXT("ACF Mount Component"));
 	VaultComponent = CreateDefaultSubobject<UACFVaultComponent>(TEXT("ACF Vault Component"));
 	ALSLoadAndSaveComponent = CreateDefaultSubobject<UALSLoadAndSaveComponent>(TEXT("ALS Load And Save Component"));
@@ -58,7 +57,10 @@ TArray<UActorComponent*> APDDinosaurBase::GetComponentsToSave_Implementation() c
 {
 	TArray<UActorComponent*> ComponentsToSave;
 
-	ComponentsToSave.Add(BreedableComponent);
+	if (UActorComponent* BreedableComponent = FindComponentByInterface(UPDBreedableInterface::StaticClass()))
+	{
+		ComponentsToSave.Add(BreedableComponent);
+	}
 	//ComponentsToSave.Add(TamingComponent);
 	ComponentsToSave.Add(TeamComponent);
 

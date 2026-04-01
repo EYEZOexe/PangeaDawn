@@ -16,17 +16,6 @@
 			]
 		},
 		{
-			"Name": "PangeaBreedingSystem",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"AdditionalDependencies": [
-				"Engine",
-				"InventorySystem",
-				"CoreUObject",
-				"UMG"
-			]
-		},
-		{
 			"Name": "PangeaDinosaurAI",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
@@ -111,6 +100,10 @@
 		},
 		{
 			"Name": "GF_PangeaTamingSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_PangeaBreedingSystem",
 			"Enabled": true
 		}
 	]

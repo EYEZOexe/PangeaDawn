@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Types/BreedingTypes.h"
 #include "Engine/DataAsset.h"
 #include "PangeaCreatureDefinition.generated.h"
 
@@ -18,6 +19,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Definition")
 	TSoftClassPtr<AActor> CreatureClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Definition")
+	ECreatureGenderAssignmentMode GenderAssignmentMode = ECreatureGenderAssignmentMode::Randomize;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Definition", meta=(EditCondition="GenderAssignmentMode == ECreatureGenderAssignmentMode::UseDefault", EditConditionHides))
+	ECreatureGender DefaultGender = ECreatureGender::Female;
 
 	UPROPERTY(EditDefaultsOnly, Instanced, BlueprintReadOnly, Category="Definition")
 	TArray<TObjectPtr<UPangeaDefinitionFragment>> Fragments;
