@@ -5,6 +5,8 @@
 
 #include "Actors/ACFCharacter.h"
 #include "DataAssets/TameSpeciesConfig.h"
+#include "Definitions/PangeaCreatureDefinition.h"
+#include "Definitions/PangeaTamingFragment.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AIController.h"
 #include "Blueprint/UserWidget.h"
@@ -13,6 +15,7 @@
 #include "Components/ACFTeamComponent.h"
 #include "Game/ACFFunctionLibrary.h"
 #include "Game/ACFPlayerController.h"
+#include "Interfaces/PDDefinitionProviderInterface.h"
 #include "UI/TamingWidget.h"
 
 UPangeaTamingComponent::UPangeaTamingComponent()
@@ -23,6 +26,9 @@ UPangeaTamingComponent::UPangeaTamingComponent()
 void UPangeaTamingComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ResolveConfigFromDefinition();
+	ResolveConfigFromOwnerClass();
 
 	//Initialize
 	if (ETameState::Wild == TamedState)
@@ -36,6 +42,58 @@ void UPangeaTamingComponent::BeginPlay()
 
 	//bind event
 	OnTameStateChanged.AddDynamic(this, &UPangeaTamingComponent::HandleTameStateChanged);
+}
+
+void UPangeaTamingComponent::ResolveConfigFromDefinition()
+{
+	if (TameSpeciesConfig)
+	{
+		return;
+	}
+
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->GetClass()->ImplementsInterface(UPDDefinitionProviderInterface::StaticClass()))
+	{
+		return;
+	}
+
+	UPangeaCreatureDefinition* Definition = IPDDefinitionProviderInterface::Execute_GetCreatureDefinition(Owner);
+	if (!Definition)
+	{
+		return;
+	}
+
+	if (const UPangeaTamingFragment* TamingFragment = Definition->GetFragment<UPangeaTamingFragment>())
+	{
+		TameSpeciesConfig = TamingFragment->TameSpeciesConfig;
+	}
+}
+
+void UPangeaTamingComponent::ResolveConfigFromOwnerClass()
+{
+	if (TameSpeciesConfig || OwnerClassConfigMap.IsEmpty())
+	{
+		return;
+	}
+
+	AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return;
+	}
+
+	for (UClass* CurrentClass = Owner->GetClass(); CurrentClass && CurrentClass != AActor::StaticClass(); CurrentClass = CurrentClass->GetSuperClass())
+	{
+		for (const TPair<TSoftClassPtr<AActor>, TObjectPtr<UTameSpeciesConfig>>& Entry : OwnerClassConfigMap)
+		{
+			UClass* MappedClass = Entry.Key.LoadSynchronous();
+			if (MappedClass == CurrentClass && Entry.Value)
+			{
+				TameSpeciesConfig = Entry.Value;
+				return;
+			}
+		}
+	}
 }
 
 // ------------------------------------------------------------
@@ -331,6 +389,12 @@ void UPangeaTamingComponent::SetTamedRole(ETamedRole NewRole)
 			break;
 		}
 	}
+}
+
+bool UPangeaTamingComponent::CanBeTamed() const
+{
+	return TameSpeciesConfig && 
+		   (TameSpeciesConfig->bCanBeMount || TameSpeciesConfig->bCanBeCompanion);
 }
 
 ETamedRole UPangeaTamingComponent::DetermineFinalRole(ETamedRole DesiredRole) const

@@ -6,7 +6,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
-#include "TamingTypes.h"
+#include "Interfaces/PDTameableInterface.h"
+#include "Types/TamingTypes.h"
 #include "PangeaTamingComponent.generated.h"
 
 class UTamingWidget;
@@ -19,7 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTameStateChanged, ETameState, NewSt
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTameRoleSelected, ETamedRole, Role);
 
 UCLASS(Blueprintable, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class PANGEATAMINGSYSTEM_API UPangeaTamingComponent : public UActorComponent
+class PANGEATAMINGSYSTEM_API UPangeaTamingComponent : public UActorComponent, public IPDTameableInterface
 {
 	GENERATED_BODY()
 
@@ -30,20 +31,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Config", SaveGame)
 	UTameSpeciesConfig* TameSpeciesConfig = nullptr;
 
+	// Optional per-owner-class overrides, useful when this component is injected into many dinosaur subclasses.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Config")
+	TMap<TSoftClassPtr<AActor>, TObjectPtr<UTameSpeciesConfig>> OwnerClassConfigMap;
+
 	// --- Runtime state ---
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="State", SaveGame)
 	ETameState TamedState = ETameState::Wild;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="State", SaveGame)
 	ETamedRole TamedRole = ETamedRole::None;
-
-	// // Persisted current team for SaveGame loading
-	// UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="State", SaveGame)
-	// FGameplayTag ChangedTeam;
-	//
-	// // Persisted AI controller class for SaveGame loading
-	// UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="State", SaveGame)
-	// TSubclassOf<AAIController> CurrentAIControllerClass;
 
 	// --- Core API ---
 	UFUNCTION(BlueprintCallable, Category="Taming")
@@ -53,7 +50,7 @@ public:
 	void InitializeHostile();
 
 	UFUNCTION(BlueprintCallable, Category="Taming")
-	void StartTameAttempt(AActor* Instigator);
+	virtual void StartTameAttempt(AActor* Instigator) override;
 
 	UFUNCTION(BlueprintCallable, Category="Taming")
 	void OnTameResolved(bool bSuccess, ETamedRole DesiredRole);
@@ -62,16 +59,19 @@ public:
 	void HandleTameStateChanged(ETameState NewState);
 
 	UFUNCTION(BlueprintCallable, Category="Load")
-	void HandleLoadedActor();
+	virtual void HandleLoadedActor() override;
 
 	UFUNCTION(BlueprintCallable, Category="Taming")
 	void SetTamedRole(ETamedRole NewRole);
 
 	UFUNCTION(BlueprintCallable, Category="Taming")
-	ETamedRole GetTamedRole() const {return TamedRole;}
+	virtual ETamedRole GetTamedRole() const override {return TamedRole;}
 
 	UFUNCTION(BlueprintCallable, Category="Taming")
-	ETameState GetTameState() const {return TamedState;}
+	virtual ETameState GetTameState() const override {return TamedState;}
+	
+	UFUNCTION(BlueprintCallable, Category="Taming")
+	virtual bool CanBeTamed() const override;
 
 	// --- Minigame ---
 	UPROPERTY(EditDefaultsOnly, Category="Taming|UI")
@@ -100,6 +100,9 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
+	void ResolveConfigFromDefinition();
+	void ResolveConfigFromOwnerClass();
+
 	// --- Checks ---
 	bool HasRequiredStats(AActor* Instigator) const;
 	bool HasRequiredItem(AActor* Instigator) const;

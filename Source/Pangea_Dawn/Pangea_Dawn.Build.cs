@@ -32,7 +32,6 @@ public class Pangea_Dawn : ModuleRules
 				"GraphEditor",
 				"Kismet",
 				"KismetCompiler",
-				"NarrativeArsenal",
 				"NarrativeQuestEditor",
 				"NarrativeDialogueEditor"
 			});

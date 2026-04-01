@@ -8,10 +8,11 @@
 #include "Components/ACFQuadrupedMovementComponent.h"
 #include "ACFVaultComponent.h"
 #include "ALSLoadAndSaveComponent.h"
+#include "Definitions/PangeaCreatureDefinition.h"
+#include "EditorCategoryUtils.h"
 #include "Components/ACFTeamComponent.h"
-#include "Components/PangeaTamingComponent.h"
-#include "DataAssets/TameSpeciesConfig.h"
-
+#include "Interfaces/PDTameableInterface.h"
+#include "Components/GameFrameworkComponentManager.h"
 
 
 APDDinosaurBase::APDDinosaurBase(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -19,14 +20,30 @@ APDDinosaurBase::APDDinosaurBase(const FObjectInitializer& ObjectInitializer) : 
 	BreedableComponent = CreateDefaultSubobject<UPangeaBreedableComponent>(TEXT("Pangea Breeding Component"));
 	MountComponent = CreateDefaultSubobject<UACFMountComponent>(TEXT("ACF Mount Component"));
 	VaultComponent = CreateDefaultSubobject<UACFVaultComponent>(TEXT("ACF Vault Component"));
-	TamingComponent = CreateDefaultSubobject<UPangeaTamingComponent>(TEXT("Pangea Taming Component"));
 	ALSLoadAndSaveComponent = CreateDefaultSubobject<UALSLoadAndSaveComponent>(TEXT("ALS Load And Save Component"));
+}
+
+void APDDinosaurBase::PreInitializeComponents()
+{
+	Super::PreInitializeComponents();
+	UGameFrameworkComponentManager::AddGameFrameworkComponentReceiver(this);
 }
 
 void APDDinosaurBase::BeginPlay()
 {
 	Super::BeginPlay();
+	UGameFrameworkComponentManager::SendGameFrameworkComponentExtensionEvent(
+		this, 
+		UGameFrameworkComponentManager::NAME_GameActorReady);
 }
+
+void APDDinosaurBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UGameFrameworkComponentManager::RemoveGameFrameworkComponentReceiver(this);
+	Super::EndPlay(EndPlayReason);
+}
+
+
 
 void APDDinosaurBase::Tick(float DeltaTime)
 {
@@ -42,7 +59,7 @@ TArray<UActorComponent*> APDDinosaurBase::GetComponentsToSave_Implementation() c
 	TArray<UActorComponent*> ComponentsToSave;
 
 	ComponentsToSave.Add(BreedableComponent);
-	ComponentsToSave.Add(TamingComponent);
+	//ComponentsToSave.Add(TamingComponent);
 	ComponentsToSave.Add(TeamComponent);
 
 	return ComponentsToSave;
@@ -54,23 +71,34 @@ TArray<UActorComponent*> APDDinosaurBase::GetComponentsToSave_Implementation() c
 
 bool APDDinosaurBase::CanBeInteracted_Implementation(class APawn* Pawn)
 {
-	// Can be interacted with if not mounted and if can be a mount or companion 
-	return !MountComponent->IsMounted() && TamingComponent && TamingComponent->TameSpeciesConfig &&
-		(TamingComponent->TameSpeciesConfig->bCanBeMount || TamingComponent->TameSpeciesConfig->bCanBeCompanion);
+	UActorComponent* TamingComponent = FindComponentByInterface(UPDTameableInterface::StaticClass());
+	if (!TamingComponent) return false;
+	
+	IPDTameableInterface* Tameable = Cast<IPDTameableInterface>(TamingComponent);
+	
+	return !MountComponent->IsMounted() && Tameable->CanBeTamed();
 }
 
 void APDDinosaurBase::OnInteractedByPawn_Implementation(APawn* Pawn, const FString& interactionType)
 {
+	UActorComponent* TamingComponent = FindComponentByInterface(UPDTameableInterface::StaticClass());
+    
+	if (!TamingComponent)
+	{
+		return;
+	}
+	
+	IPDTameableInterface* Tameable = Cast<IPDTameableInterface>(TamingComponent);
 	AACFCharacter* ACFCharacter = Cast<AACFCharacter>(Pawn);
 
-	if (!TamingComponent || TamingComponent->TamedState != ETameState::Tamed)
+	if (Tameable->GetTameState() != ETameState::Tamed)
 	{
 		// Not tamed yet → maybe start a taming attempt instead
-		TamingComponent->StartTameAttempt(Pawn);
+		Tameable->StartTameAttempt(Pawn);
 		return;
 	}
 
-	if (TamingComponent->TamedRole == ETamedRole::Mount)
+	if (Tameable->GetTamedRole() == ETamedRole::Mount)
 	{
 		//request gameplay tag
 		FGameplayTag MountTag = FGameplayTag::RequestGameplayTag("Actions.Mount");
@@ -87,7 +115,7 @@ void APDDinosaurBase::OnInteractedByPawn_Implementation(APawn* Pawn, const FStri
 			ACFCharacter->TriggerAction(MountTag, EActionPriority::EHigh, false);
 		}
 	}
-	else if (TamingComponent->TamedRole == ETamedRole::Companion)
+	else if (Tameable->GetTamedRole() == ETamedRole::Companion)
 	{
 		UE_LOG(LogEngine, Display, TEXT("You Pet Dino!"));
 	}
@@ -95,26 +123,28 @@ void APDDinosaurBase::OnInteractedByPawn_Implementation(APawn* Pawn, const FStri
 
 FText APDDinosaurBase::GetInteractableName_Implementation()
 {
-	// return Tame if not tamed and once tamed return mount/pet based on role
-	if (TamingComponent && TamingComponent->TamedState == ETameState::Wild)
+	UActorComponent* TamingComponent = FindComponentByInterface(UPDTameableInterface::StaticClass());
+	if (!TamingComponent) return FText::FromString("Interact");
+	
+	IPDTameableInterface* Tameable = Cast<IPDTameableInterface>(TamingComponent);
+	
+	if (Tameable->GetTameState() == ETameState::Wild)
 	{
 		return FText::FromString("Tame");
 	}
-
-	if (TamingComponent && TamingComponent->TamedState == ETameState::Tamed)
+	
+	if (Tameable->GetTameState() == ETameState::Tamed)
 	{
-		if (TamingComponent->TamedRole == ETamedRole::Mount)
-		{
-			return FText::FromString("Mount");
-		}
-
-		if (TamingComponent->TamedRole == ETamedRole::Companion)
-		{
-			return FText::FromString("Pet");
-		}
+		if (Tameable->GetTamedRole() == ETamedRole::Mount) return FText::FromString("Mount");
+		if (Tameable->GetTamedRole() == ETamedRole::Companion) return FText::FromString("Pet");
 	}
 	
 	return FText::FromString("Interact");
+}
+
+UPangeaCreatureDefinition* APDDinosaurBase::GetCreatureDefinition_Implementation() const
+{
+	return CreatureDefinition;
 }
 
 #pragma endregion
@@ -142,7 +172,12 @@ void APDDinosaurBase::Brake(float Value)
 
 void APDDinosaurBase::OnLoaded_Implementation()
 {
-	TamingComponent->HandleLoadedActor();
+	if (UActorComponent* TamingComponent = FindComponentByInterface(UPDTameableInterface::StaticClass()))
+	{
+		IPDTameableInterface* Tameable = Cast<IPDTameableInterface>(TamingComponent);
+		
+		Tameable->HandleLoadedActor();
+	}
 }
 
 void APDDinosaurBase::ChangeVelocityState()

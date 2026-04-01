@@ -4,14 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "ALSSavableInterface.h"
-#include "TamingTypes.h"
 #include "Actors/ACFCharacter.h"
+#include "Interfaces/PDDefinitionProviderInterface.h"
 #include "PDDinosaurBase.generated.h"
 
 
 class UALSLoadAndSaveComponent;
+class UPangeaCreatureDefinition;
 class UPangeaBreedableComponent;
-class UPangeaTamingComponent;
 class UACFMountComponent;
 class UACFVaultComponent;
 
@@ -21,7 +21,8 @@ class UACFVaultComponent;
 UCLASS()
 class PANGEADINOSAURAI_API APDDinosaurBase : public AACFCharacter,
 	public IACFInteractableInterface,
-	public IALSSavableInterface
+	public IALSSavableInterface,
+	public IPDDefinitionProviderInterface
 {
 	GENERATED_BODY()
 
@@ -30,7 +31,9 @@ class PANGEADINOSAURAI_API APDDinosaurBase : public AACFCharacter,
 
 public:
 	// Unreal Engine
+	virtual void PreInitializeComponents() override;
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	void ChangeVelocityState();
 	virtual void Tick(float DeltaTime) override;
 	
@@ -38,6 +41,7 @@ public:
 	virtual bool CanBeInteracted_Implementation(class APawn* Pawn) override;
 	virtual void OnInteractedByPawn_Implementation(class APawn* Pawn, const FString& interactionType = "") override;
 	virtual FText GetInteractableName_Implementation() override;
+	virtual UPangeaCreatureDefinition* GetCreatureDefinition_Implementation() const override;
 	
 	UFUNCTION()
 	virtual TArray<UActorComponent*> GetComponentsToSave_Implementation() const override;
@@ -48,9 +52,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"), SaveGame)
 	TObjectPtr<UPangeaBreedableComponent> BreedableComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"), SaveGame)
-	TObjectPtr<UPangeaTamingComponent> TamingComponent;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UACFMountComponent> MountComponent;
 
@@ -59,6 +60,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UALSLoadAndSaveComponent> ALSLoadAndSaveComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Definition", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UPangeaCreatureDefinition> CreatureDefinition;
 	
 	UFUNCTION(BlueprintCallable, Category="Dinosaur Movement")
 	void Accelerate(float Value);

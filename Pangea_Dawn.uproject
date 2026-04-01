@@ -39,19 +39,6 @@
 			]
 		},
 		{
-			"Name": "PangeaTamingSystem",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"AdditionalDependencies": [
-				"Engine",
-				"AscentCombatFramework",
-				"CoreUObject",
-				"UMG",
-				"ActionsSystem",
-				"GameplayAbilities"
-			]
-		},
-		{
 			"Name": "PangeaBaseUpgradeSystem",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
@@ -112,6 +99,18 @@
 		},
 		{
 			"Name": "AgentIntegrationKit",
+			"Enabled": true
+		},
+		{
+			"Name": "AbilitySystemGameFeatureActions",
+			"Enabled": true
+		},
+		{
+			"Name": "GameFeatures",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_PangeaTamingSystem",
 			"Enabled": true
 		}
 	]

@@ -15,6 +15,6 @@ public class Pangea_DawnEditorTarget : TargetRules
 
 	private void RegisterModulesCreatedByRider()
 	{
-		ExtraModuleNames.AddRange(new string[] { "PangeaBaseUpgradeSystem", "PangeaMiningSystem" });
+		ExtraModuleNames.AddRange(new string[] { "PangeaBaseUpgradeSystem", "PangeaMiningSystem", "PangeaCore" });
 	}
 }
