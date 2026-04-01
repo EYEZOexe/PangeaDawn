@@ -3,6 +3,10 @@
 #include "Components/PangeaBreedableComponent.h"
 
 #include "AdvancedRPGSystem/Public/ARSStatisticsComponent.h"
+#include "ARSFunctionLibrary.h"
+#include "ARSTypes.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "Components/PangeaBreedingFarmComponent.h"
 #include "Definitions/PangeaBreedingFragment.h"
 #include "Definitions/PangeaCreatureDefinition.h"
@@ -41,6 +45,11 @@ void UPangeaBreedableComponent::BeginPlay()
     if (!ACFAttributes && GetOwner())
     {
         ACFAttributes = GetOwner()->FindComponentByClass<UARSStatisticsComponent>();
+    }
+
+    if (!InheritedStatProfile.IsEmpty())
+    {
+        ApplyInheritedStatProfile();
     }
 
     if (AActor* Owner = GetOwner())
@@ -216,6 +225,29 @@ FParentSnapshot UPangeaBreedableComponent::BuildParentSnapshot() const
         }
     }
 
+    if (ACFAttributes)
+    {
+        for (const FPangeaInheritedStatRule& Rule : BreedingFragment->InheritedStatRules)
+        {
+            const float Value = GetInheritedSourceValue(Rule.StatType, Rule.StatTag);
+
+            switch (Rule.StatType)
+            {
+            case EPangeaInheritedStatType::Statistic:
+                Snapshot.InheritedStatistics.Add(Rule.StatTag, Value);
+                break;
+
+            case EPangeaInheritedStatType::PrimaryAttribute:
+                Snapshot.InheritedPrimaryAttributes.Add(Rule.StatTag, Value);
+                break;
+
+            case EPangeaInheritedStatType::Attribute:
+                Snapshot.InheritedAttributes.Add(Rule.StatTag, Value);
+                break;
+            }
+        }
+    }
+
     return Snapshot;
 }
 
@@ -244,6 +276,77 @@ APangeaEggActor* UPangeaBreedableComponent::BreedWith(UPangeaBreedableComponent*
 
 void UPangeaBreedableComponent::PullAttributesIntoTraits_Implementation(FGeneticTraitSet& InOutTraits) const
 {
+}
+
+void UPangeaBreedableComponent::SetInheritedStatProfile(const FPangeaInheritedStatProfile& NewProfile, const bool bApplyImmediately)
+{
+    InheritedStatProfile = NewProfile;
+
+    if (bApplyImmediately)
+    {
+        ApplyInheritedStatProfile();
+    }
+}
+
+void UPangeaBreedableComponent::ApplyInheritedStatProfile()
+{
+    if (InheritedStatProfile.IsEmpty())
+    {
+        return;
+    }
+
+    if (!ACFAttributes && GetOwner())
+    {
+        ACFAttributes = GetOwner()->FindComponentByClass<UARSStatisticsComponent>();
+    }
+
+    UAbilitySystemComponent* ASC = GetOwnerAbilitySystemComponent();
+    const UPangeaBreedingFragment* BreedingFragment = GetBreedingFragment();
+    if (!ASC || !BreedingFragment || !BreedingFragment->InheritedStatsGameplayEffect)
+    {
+        return;
+    }
+
+    if (InheritedStatsEffectHandle.IsValid())
+    {
+        ASC->RemoveActiveGameplayEffect(InheritedStatsEffectHandle);
+        InheritedStatsEffectHandle.Invalidate();
+    }
+
+    FAttributesSetModifier Modifier;
+    Modifier.GEModifierType = EGEType::ESetByCallerFromConfig;
+    Modifier.GameplayEffectModifier = BreedingFragment->InheritedStatsGameplayEffect;
+
+    for (const FPangeaInheritedStatValue& Value : InheritedStatProfile.Values)
+    {
+        switch (Value.StatType)
+        {
+        case EPangeaInheritedStatType::Statistic:
+            Modifier.StatisticsMod.Add(FStatisticsModifier(Value.StatTag, EModifierType::EAdditive, Value.Value, 0.f));
+            break;
+
+        case EPangeaInheritedStatType::PrimaryAttribute:
+            Modifier.PrimaryAttributesMod.Add(FAttributeModifier(Value.StatTag, EModifierType::EAdditive, Value.Value));
+            break;
+
+        case EPangeaInheritedStatType::Attribute:
+            Modifier.AttributesMod.Add(FAttributeModifier(Value.StatTag, EModifierType::EAdditive, Value.Value));
+            break;
+        }
+    }
+
+    if (Modifier.PrimaryAttributesMod.Num() == 0 && Modifier.AttributesMod.Num() == 0 && Modifier.StatisticsMod.Num() == 0)
+    {
+        return;
+    }
+
+    InheritedStatsEffectHandle = UARSFunctionLibrary::CreateAndApplyGameplayEffectFromAttributeModifier(Modifier, ASC);
+    UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] Applied inherited profile to %s Primary=%d Secondary=%d Statistics=%d Effect=%s"),
+        *GetNameSafe(GetOwner()),
+        Modifier.PrimaryAttributesMod.Num(),
+        Modifier.AttributesMod.Num(),
+        Modifier.StatisticsMod.Num(),
+        *GetNameSafe(BreedingFragment->InheritedStatsGameplayEffect));
 }
 
 TMap<FName, FLinearColor> UPangeaBreedableComponent::CollectMaterialGenetics() const
@@ -311,6 +414,64 @@ const UPangeaBreedingFragment* UPangeaBreedableComponent::GetBreedingFragment() 
 {
     UPangeaCreatureDefinition* Definition = GetCreatureDefinition();
     return Definition ? Definition->GetFragment<UPangeaBreedingFragment>() : nullptr;
+}
+
+float UPangeaBreedableComponent::GetInheritedSourceValue(const EPangeaInheritedStatType StatType, const FGameplayTag& StatTag) const
+{
+    UAbilitySystemComponent* ASC = GetOwnerAbilitySystemComponent();
+    if (!ASC || !StatTag.IsValid())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] Missing ASC or invalid tag on %s for tag=%s"),
+            *GetNameSafe(GetOwner()), *StatTag.ToString());
+        return 0.f;
+    }
+
+    switch (StatType)
+    {
+    case EPangeaInheritedStatType::Statistic:
+    {
+        FStatisticsConfig StatConfig;
+        if (!UARSFunctionLibrary::TryGetStatisticFromSetByCallerTag(StatTag, StatConfig))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] Failed to resolve statistic tag %s"), *StatTag.ToString());
+            return 0.f;
+        }
+
+        bool bFound = false;
+        const float Value = ASC->GetGameplayAttributeValue(StatConfig.MaxStatAttribute, bFound);
+        UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] Parent=%s Type=Statistic Tag=%s Value=%.2f"),
+            *GetNameSafe(GetOwner()), *StatTag.ToString(), Value);
+        return Value;
+    }
+
+    case EPangeaInheritedStatType::PrimaryAttribute:
+    case EPangeaInheritedStatType::Attribute:
+    {
+        FGameplayAttribute Attribute;
+        if (!UARSFunctionLibrary::TryGetAttributeFromSetByCallerTag(StatTag, Attribute))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] Failed to resolve attribute tag %s"), *StatTag.ToString());
+            return 0.f;
+        }
+
+        bool bFound = false;
+        const float Value = ASC->GetGameplayAttributeValue(Attribute, bFound);
+        UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] Parent=%s Type=%s Tag=%s Value=%.2f"),
+            *GetNameSafe(GetOwner()),
+            StatType == EPangeaInheritedStatType::PrimaryAttribute ? TEXT("PrimaryAttribute") : TEXT("Attribute"),
+            *StatTag.ToString(),
+            Value);
+        return Value;
+    }
+
+    default:
+        return 0.f;
+    }
+}
+
+UAbilitySystemComponent* UPangeaBreedableComponent::GetOwnerAbilitySystemComponent() const
+{
+    return UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 }
 
 ECreatureGender UPangeaBreedableComponent::GetRandomGender()

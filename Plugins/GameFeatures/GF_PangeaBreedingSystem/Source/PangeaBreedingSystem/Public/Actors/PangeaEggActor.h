@@ -76,6 +76,8 @@ protected:
     void StartIncubation();
     void TickIncubation();
     void FinishIncubation();
+    FPangeaInheritedStatProfile GenerateInheritedStatProfile(const UPangeaBreedingFragment* BreedingFragment) const;
+    float GetSnapshotInheritedValue(const FParentSnapshot& Snapshot, EPangeaInheritedStatType StatType, const FGameplayTag& StatTag) const;
 
     bool ValidateVisualInheritance(AActor* NewCreature) const;
     UMaterialInstanceDynamic* CreateDynamicMaterial(AActor* NewCreature, int32 SlotIndex);

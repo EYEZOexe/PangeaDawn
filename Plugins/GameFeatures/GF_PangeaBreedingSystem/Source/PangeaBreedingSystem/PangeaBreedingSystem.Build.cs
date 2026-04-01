@@ -6,9 +6,9 @@ public class PangeaBreedingSystem : ModuleRules
 {
 	public PangeaBreedingSystem(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PrivateDependencyModuleNames.AddRange(new string[] { "StatusEffectSystem", "ActionsSystem", "AdvancedRPGSystem" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "StatusEffectSystem", "ActionsSystem", "AdvancedRPGSystem", "GameplayAbilities" });
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "InventorySystem", "UMG", "PangeaCore" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "InventorySystem", "UMG", "PangeaCore", "GameplayTags" });
 	}
 }

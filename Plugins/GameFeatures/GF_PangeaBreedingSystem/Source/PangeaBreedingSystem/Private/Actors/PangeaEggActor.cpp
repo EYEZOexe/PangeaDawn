@@ -2,6 +2,7 @@
 
 #include "Actors/PangeaEggActor.h"
 
+#include "Components/PangeaBreedableComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Objects/PangeaGeneticStrategy.h"
 
@@ -111,7 +112,6 @@ AActor* APangeaEggActor::Hatch()
     }
 
     const TSoftClassPtr<AActor> HatchClass = EffectiveDefinition->CreatureClass;
-
     if (HatchClass.IsNull())
     {
         Destroy();
@@ -125,12 +125,85 @@ AActor* APangeaEggActor::Hatch()
     AActor* NewCreature = GetWorld()->SpawnActor<AActor>(HatchClass.LoadSynchronous(), GetActorLocation(), GetActorRotation(), Params);
     if (NewCreature)
     {
+        if (BreedingFragment)
+        {
+            if (UPangeaBreedableComponent* BreedableComponent = NewCreature->FindComponentByClass<UPangeaBreedableComponent>())
+            {
+                BreedableComponent->SetInheritedStatProfile(GenerateInheritedStatProfile(BreedingFragment), true);
+            }
+        }
+
         ApplyVisualInheritance(NewCreature);
         OnEggHatched.Broadcast(NewCreature);
     }
 
     Destroy();
     return NewCreature;
+}
+
+FPangeaInheritedStatProfile APangeaEggActor::GenerateInheritedStatProfile(const UPangeaBreedingFragment* BreedingFragment) const
+{
+    FPangeaInheritedStatProfile Profile;
+    if (!BreedingFragment)
+    {
+        return Profile;
+    }
+
+    for (const FPangeaInheritedStatRule& Rule : BreedingFragment->InheritedStatRules)
+    {
+        if (!Rule.StatTag.IsValid())
+        {
+            continue;
+        }
+
+        const float ParentAValue = GetSnapshotInheritedValue(ParentA, Rule.StatType, Rule.StatTag);
+        const float ParentBValue = GetSnapshotInheritedValue(ParentB, Rule.StatType, Rule.StatTag);
+        const float AverageValue = (ParentAValue + ParentBValue) * 0.5f;
+        const float BestParentValue = FMath::Max(ParentAValue, ParentBValue);
+        float ChildValue = FMath::Lerp(AverageValue, BestParentValue, FMath::Clamp(Rule.BestParentBias, 0.f, 1.f));
+
+        if (FMath::FRand() < Rule.MutationChance)
+        {
+            ChildValue *= 1.f + FMath::FRandRange(Rule.MutationPercentMin, Rule.MutationPercentMax);
+        }
+
+        if (Rule.MaxValue > Rule.MinValue)
+        {
+            ChildValue = FMath::Clamp(ChildValue, Rule.MinValue, Rule.MaxValue);
+        }
+        else if (Rule.MinValue > 0.f)
+        {
+            ChildValue = FMath::Max(ChildValue, Rule.MinValue);
+        }
+
+        FPangeaInheritedStatValue& Value = Profile.Values.AddDefaulted_GetRef();
+        Value.StatTag = Rule.StatTag;
+        Value.StatType = Rule.StatType;
+        Value.Value = ChildValue;
+
+        UE_LOG(LogTemp, Warning, TEXT("[BreedingStats] ChildProfile Tag=%s Type=%d ParentA=%.2f ParentB=%.2f Result=%.2f"),
+            *Rule.StatTag.ToString(), static_cast<int32>(Rule.StatType), ParentAValue, ParentBValue, ChildValue);
+    }
+
+    return Profile;
+}
+
+float APangeaEggActor::GetSnapshotInheritedValue(const FParentSnapshot& Snapshot, const EPangeaInheritedStatType StatType, const FGameplayTag& StatTag) const
+{
+    switch (StatType)
+    {
+    case EPangeaInheritedStatType::Statistic:
+        return Snapshot.InheritedStatistics.FindRef(StatTag);
+
+    case EPangeaInheritedStatType::PrimaryAttribute:
+        return Snapshot.InheritedPrimaryAttributes.FindRef(StatTag);
+
+    case EPangeaInheritedStatType::Attribute:
+        return Snapshot.InheritedAttributes.FindRef(StatTag);
+
+    default:
+        return 0.f;
+    }
 }
 
 void APangeaEggActor::ApplyVisualInheritance(AActor* NewCreature)

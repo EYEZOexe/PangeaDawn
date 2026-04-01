@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Definitions/PangeaBreedingFragment.h"
+#include "GameplayEffectTypes.h"
 #include "Interfaces/PDBreedableInterface.h"
 #include "Types/BreedingTypes.h"
 #include "PangeaBreedableComponent.generated.h"
@@ -11,6 +13,7 @@
 class UPangeaBreedingFragment;
 class UPangeaGeneticStrategy;
 class UPangeaCreatureDefinition;
+class UAbilitySystemComponent;
 class UARSStatisticsComponent;
 class UPangeaBreedingFarmComponent;
 
@@ -55,6 +58,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TObjectPtr<UARSStatisticsComponent> ACFAttributes;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category="Breeding|Genetics")
+    FPangeaInheritedStatProfile InheritedStatProfile;
+
     UPROPERTY(BlueprintAssignable)
     FOnBred OnBred;
 
@@ -89,6 +95,12 @@ public:
     UFUNCTION(BlueprintPure, Category="Breeding")
     bool CanProduceEgg() const { return Gender == ECreatureGender::Female; }
 
+    UFUNCTION(BlueprintCallable, Category="Breeding|Stats")
+    void SetInheritedStatProfile(const FPangeaInheritedStatProfile& NewProfile, bool bApplyImmediately = true);
+
+    UFUNCTION(BlueprintCallable, Category="Breeding|Stats")
+    void ApplyInheritedStatProfile();
+
 protected:
     // Called when the game starts
     virtual void BeginPlay() override;
@@ -99,5 +111,9 @@ protected:
 private:
     const UPangeaBreedingFragment* GetBreedingFragment() const;
     UPangeaCreatureDefinition* GetCreatureDefinition() const;
+    UAbilitySystemComponent* GetOwnerAbilitySystemComponent() const;
+    float GetInheritedSourceValue(EPangeaInheritedStatType StatType, const FGameplayTag& StatTag) const;
     static ECreatureGender GetRandomGender();
+
+    FActiveGameplayEffectHandle InheritedStatsEffectHandle;
 };

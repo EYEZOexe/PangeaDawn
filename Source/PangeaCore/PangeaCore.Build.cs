@@ -12,6 +12,7 @@ public class PangeaCore : ModuleRules
                 "Core",
                 "CoreUObject",
                 "Engine",
+                "GameplayTags",
             }
         );
 

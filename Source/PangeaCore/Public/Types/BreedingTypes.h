@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "BreedingTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -85,6 +86,15 @@ struct PANGEACORE_API FParentSnapshot
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FName, float> ScalarParams;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FGameplayTag, float> InheritedStatistics;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FGameplayTag, float> InheritedPrimaryAttributes;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FGameplayTag, float> InheritedAttributes;
 };
 
 USTRUCT(BlueprintType)
