@@ -61,7 +61,12 @@ TArray<UActorComponent*> APDDinosaurBase::GetComponentsToSave_Implementation() c
 	{
 		ComponentsToSave.Add(BreedableComponent);
 	}
-	//ComponentsToSave.Add(TamingComponent);
+	
+	if (UActorComponent* TamingComponent = FindComponentByInterface(UPDTameableInterface::StaticClass()))
+	{
+		ComponentsToSave.Add(TamingComponent);
+	}
+	
 	ComponentsToSave.Add(TeamComponent);
 
 	return ComponentsToSave;
