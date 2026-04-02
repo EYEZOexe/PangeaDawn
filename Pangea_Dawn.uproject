@@ -28,11 +28,6 @@
 			]
 		},
 		{
-			"Name": "PangeaBaseUpgradeSystem",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		},
-		{
 			"Name": "PangeaMiningSystem",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
@@ -104,6 +99,14 @@
 		},
 		{
 			"Name": "GF_PangeaBreedingSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_PangeaBaseSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_PangeaMiningSystem",
 			"Enabled": true
 		}
 	]
