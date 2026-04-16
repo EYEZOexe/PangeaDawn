@@ -83,7 +83,12 @@
 		},
 		{
 			"Name": "AgentIntegrationKit",
-			"Enabled": true
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Mac",
+				"Linux"
+			]
 		},
 		{
 			"Name": "AbilitySystemGameFeatureActions",
@@ -107,6 +112,10 @@
 		},
 		{
 			"Name": "GF_PangeaMiningSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_PangeaHuntingSystem",
 			"Enabled": true
 		}
 	]

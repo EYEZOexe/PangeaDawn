@@ -30,15 +30,7 @@ void UPangeaTamingComponent::BeginPlay()
 	ResolveConfigFromDefinition();
 	ResolveConfigFromOwnerClass();
 
-	//Initialize
-	if (ETameState::Wild == TamedState)
-	{
-		InitializeWild();
-	}
-	else if (ETameState::Hostile == TamedState)
-	{
-		InitializeHostile();
-	}
+	InitializeStartupTameState();
 
 	//bind event
 	OnTameStateChanged.AddDynamic(this, &UPangeaTamingComponent::HandleTameStateChanged);
@@ -141,6 +133,18 @@ bool UPangeaTamingComponent::CheckTamePrerequisites(AActor* Instigator) const
 // ------------------------------------------------------------
 // --------------------- INITIALIZATION -----------------------
 // ------------------------------------------------------------
+
+void UPangeaTamingComponent::InitializeStartupTameState()
+{
+	if (!TameSpeciesConfig) return;
+
+	if (TamedState == ETameState::Wild || TamedState == ETameState::Hostile || TamedState == ETameState::Tamed)
+	{
+		ClearStateTags();
+		ApplyStateTags();
+		OnTameStateChanged.Broadcast(TamedState);
+	}
+}
 
 void UPangeaTamingComponent::InitializeWild()
 {

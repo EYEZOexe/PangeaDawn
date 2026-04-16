@@ -1,0 +1,1 @@
+#include "DataAssets/HuntSpeciesConfig.h"

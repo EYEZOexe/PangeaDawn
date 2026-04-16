@@ -3,27 +3,47 @@
 
 #include "Characters/PDDinosaurBase.h"
 #include "ACFMountComponent.h"
+#include "ACFGASStatisticsComponent.h"
 #include "Actors/ACFCharacter.h"
 #include "Components/ACFQuadrupedMovementComponent.h"
+#include "ACMCollisionManagerComponent.h"
 #include "ACFVaultComponent.h"
 #include "ALSLoadAndSaveComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Definitions/PangeaCreatureDefinition.h"
 #include "EditorCategoryUtils.h"
-#include "Components/ACFTeamComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Interfaces/PDBreedableInterface.h"
 #include "Interfaces/PDTameableInterface.h"
 #include "Components/GameFrameworkComponentManager.h"
+#include "Engine/DataTable.h"
+#include "GameplayTagContainer.h"
+#include "UObject/UnrealType.h"
 
 
-APDDinosaurBase::APDDinosaurBase(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+APDDinosaurBase::APDDinosaurBase(const FObjectInitializer& ObjectInitializer)
+	: Super(
+		ObjectInitializer
+			.SetDefaultSubobjectClass<UACFQuadrupedMovementComponent>(ACharacter::CharacterMovementComponentName)
+			.SetDefaultSubobjectClass<UACFGASStatisticsComponent>(TEXT("Statistic Component")))
+			
 {
 	MountComponent = CreateDefaultSubobject<UACFMountComponent>(TEXT("ACF Mount Component"));
 	VaultComponent = CreateDefaultSubobject<UACFVaultComponent>(TEXT("ACF Vault Component"));
 	ALSLoadAndSaveComponent = CreateDefaultSubobject<UALSLoadAndSaveComponent>(TEXT("ALS Load And Save Component"));
+
+	ConfigureCombatCollision();
+	SetCanBeDamaged(true);
+
+	if (UACMCollisionManagerComponent* CollisionManager = GetCollisionsComponent())
+	{
+		CollisionManager->AddCollisionChannel(ECC_GameTraceChannel1);
+	}
 }
 
 void APDDinosaurBase::PreInitializeComponents()
 {
+	EnsureDefaultCombatStatRow(false);
 	Super::PreInitializeComponents();
 	UGameFrameworkComponentManager::AddGameFrameworkComponentReceiver(this);
 }
@@ -31,6 +51,10 @@ void APDDinosaurBase::PreInitializeComponents()
 void APDDinosaurBase::BeginPlay()
 {
 	Super::BeginPlay();
+	EnsureDefaultCombatStatRow(true);
+	ConfigureCombatCollision();
+	SetCanBeDamaged(true);
+	
 	UGameFrameworkComponentManager::SendGameFrameworkComponentExtensionEvent(
 		this, 
 		UGameFrameworkComponentManager::NAME_GameActorReady);
@@ -66,8 +90,6 @@ TArray<UActorComponent*> APDDinosaurBase::GetComponentsToSave_Implementation() c
 	{
 		ComponentsToSave.Add(TamingComponent);
 	}
-	
-	ComponentsToSave.Add(TeamComponent);
 
 	return ComponentsToSave;
 }
@@ -196,6 +218,59 @@ void APDDinosaurBase::ChangeVelocityState()
 	else if (bIsBraking)
 	{
 		Brake(DefaultDeceleration);
+	}
+}
+
+void APDDinosaurBase::EnsureDefaultCombatStatRow(bool bReinitializeIfAssigned)
+{
+	UACFGASStatisticsComponent* StatisticsComponent = FindComponentByClass<UACFGASStatisticsComponent>();
+	if (!StatisticsComponent)
+	{
+		return;
+	}
+
+	FStructProperty* CharacterRowProperty = FindFProperty<FStructProperty>(StatisticsComponent->GetClass(), TEXT("CharacterRow"));
+	if (!CharacterRowProperty)
+	{
+		return;
+	}
+
+	FDataTableRowHandle* CharacterRow = CharacterRowProperty->ContainerPtrToValuePtr<FDataTableRowHandle>(StatisticsComponent);
+	if (!CharacterRow || CharacterRow->DataTable || !CharacterRow->RowName.IsNone())
+	{
+		return;
+	}
+
+	UDataTable* DefaultAttributesTable = LoadObject<UDataTable>(nullptr, TEXT("/Game/FullSample/Blueprints/GAS/ACF_SampleAttributesInit_DT.ACF_SampleAttributesInit_DT"));
+	if (!DefaultAttributesTable)
+	{
+		return;
+	}
+
+	CharacterRow->DataTable = DefaultAttributesTable;
+	CharacterRow->RowName = TEXT("MMEnemy");
+
+	if (bReinitializeIfAssigned)
+	{
+		StatisticsComponent->InitializeAttributeSet();
+	}
+}
+
+void APDDinosaurBase::ConfigureCombatCollision()
+{
+	if (UCapsuleComponent* CharacterCapsule = GetCapsuleComponent())
+	{
+		CharacterCapsule->SetCollisionProfileName(TEXT("Pawn"));
+		CharacterCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CharacterCapsule->SetCollisionObjectType(ECC_Pawn);
+		CharacterCapsule->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Block);
+	}
+
+	if (USkeletalMeshComponent* MeshComponent = GetMesh())
+	{
+		MeshComponent->SetCollisionProfileName(TEXT("CharacterMesh"));
+		MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		MeshComponent->SetGenerateOverlapEvents(false);
 	}
 }
 

@@ -102,6 +102,7 @@ protected:
 private:
 	void ResolveConfigFromDefinition();
 	void ResolveConfigFromOwnerClass();
+	void InitializeStartupTameState();
 
 	// --- Checks ---
 	bool HasRequiredStats(AActor* Instigator) const;

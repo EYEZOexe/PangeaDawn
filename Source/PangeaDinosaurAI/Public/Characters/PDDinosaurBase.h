@@ -47,6 +47,9 @@ public:
 	
 
 protected:
+	void EnsureDefaultCombatStatRow(bool bReinitializeIfAssigned);
+	void ConfigureCombatCollision();
+
 	// Actor Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UACFMountComponent> MountComponent;
