@@ -1,30 +1,31 @@
-﻿using UnrealBuildTool;
+using UnrealBuildTool;
 
-public class PangeaMiningSystem : ModuleRules
+public class MiningSystemUI : ModuleRules
 {
-    public PangeaMiningSystem(ReadOnlyTargetRules Target) : base(Target)
+    public MiningSystemUI(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
+                "Core",
+                "CoreUObject",
+                "Engine",
                 "InventorySystem",
-                "AIFramework",
                 "AscentCombatFramework",
-                "AscentCoreInterfaces"
+                "GF_PangeaMiningSystemRuntime",
+                "UMG",
             }
         );
 
         PrivateDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core",
-                "CoreUObject",
-                "Engine",
                 "Slate",
-                "SlateCore"
+                "SlateCore",
             }
         );
+
     }
 }

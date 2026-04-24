@@ -26,11 +26,6 @@
 				"AscentCombatFramework",
 				"AscentTeams"
 			]
-		},
-		{
-			"Name": "PangeaMiningSystem",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
@@ -116,6 +111,10 @@
 		},
 		{
 			"Name": "GF_PangeaHuntingSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayInteractions",
 			"Enabled": true
 		}
 	]

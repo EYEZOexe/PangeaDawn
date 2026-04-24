@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
-class FPangeaMiningSystemModule : public IModuleInterface
+class FMiningSystemPresentationModule : public IModuleInterface
 {
 public:
     virtual void StartupModule() override;
