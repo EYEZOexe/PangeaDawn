@@ -1,7 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ALSSavableInterface.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
 #include "Interfaces/ACFInteractableInterface.h"
 #include "MiningDiscoveryNodeActor.generated.h"
 
@@ -14,7 +16,7 @@ class UStaticMeshComponent;
 class UTextRenderComponent;
 
 UCLASS(BlueprintType, Blueprintable)
-class GF_PANGEAMININGSYSTEMRUNTIME_API AMiningDiscoveryNodeActor : public AActor, public IACFInteractableInterface
+class GF_PANGEAMININGSYSTEMRUNTIME_API AMiningDiscoveryNodeActor : public AActor, public IACFInteractableInterface, public IALSSavableInterface
 {
 	GENERATED_BODY()
 
@@ -22,6 +24,8 @@ public:
 	AMiningDiscoveryNodeActor();
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual TArray<UActorComponent*> GetComponentsToSave_Implementation() const override;
+	virtual void OnLoaded_Implementation() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mining")
 	TObjectPtr<USceneComponent> SceneRoot;
@@ -38,10 +42,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Mining")
 	FTransform SiteSpawnTransform;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, SaveGame, Category="Mining|Unlock")
+	bool bUnlocked = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Mining|Unlock")
+	FGameplayTag FacilityTag;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category="Mining")
 	TObjectPtr<AMiningSiteActor> EstablishedSite;
 
-	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category="Mining")
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, SaveGame, Category="Mining")
 	TObjectPtr<AActor> SettlementResourceActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Interaction")
@@ -49,6 +59,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Mining")
 	bool CanSetUpSite() const;
+
+	UFUNCTION(BlueprintCallable, Category="Mining|Unlock")
+	void SetUnlocked(bool bInUnlocked);
 
 	UFUNCTION(BlueprintCallable, Category="Mining")
 	AMiningSiteActor* SetUpSite();

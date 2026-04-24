@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ALSSavableInterface.h"
 #include "GameFramework/Actor.h"
 #include "Interfaces/ACFInteractableInterface.h"
 #include "SmartObjectRuntime.h"
@@ -9,6 +10,7 @@
 class UACFInteractionComponent;
 class UMiningSiteComponent;
 class UActorComponent;
+class USceneComponent;
 class UUserWidget;
 class USmartObjectComponent;
 class USphereComponent;
@@ -18,7 +20,7 @@ struct FMiningSiteLevelDefinition;
 struct FTimerHandle;
 
 UCLASS(BlueprintType, Blueprintable)
-class GF_PANGEAMININGSYSTEMRUNTIME_API AMiningSiteActor : public AActor, public IACFInteractableInterface
+class GF_PANGEAMININGSYSTEMRUNTIME_API AMiningSiteActor : public AActor, public IACFInteractableInterface, public IALSSavableInterface
 {
 	GENERATED_BODY()
 
@@ -26,6 +28,8 @@ public:
 	AMiningSiteActor();
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual TArray<UActorComponent*> GetComponentsToSave_Implementation() const override;
+	virtual void OnLoaded_Implementation() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mining")
 	TObjectPtr<USceneComponent> SceneRoot;
@@ -39,7 +43,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mining")
 	TObjectPtr<UStaticMeshComponent> SiteMarkerMesh;
 
-	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Replicated, Category="Mining")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mining|Storage")
+	TObjectPtr<USceneComponent> SiteChestMarker;
+
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Replicated, SaveGame, Category="Mining")
 	TObjectPtr<AActor> SettlementResourceActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Mining|UI")
@@ -116,7 +123,10 @@ private:
 	UFUNCTION()
 	void UpdateStatusText();
 	void RefreshSiteChest();
+	void DestroySiteChest();
 	void ClearSpawnedSiteChestInventory();
+	void DestroyOwnedPresentationActors();
+	void ResolveSettlementResourceActor();
 	void ConfigureSmartObjectComponents();
 	void RefreshPresentationActors();
 	void ClearPresentationActors();

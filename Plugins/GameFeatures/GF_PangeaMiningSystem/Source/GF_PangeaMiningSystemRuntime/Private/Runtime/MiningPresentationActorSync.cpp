@@ -5,9 +5,18 @@
 #include "Components/ACFInteractionComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationActorSync, Log, All);
+
+namespace
+{
+	static FName GetMiningSiteTag(const AMiningSiteActor& SiteActor)
+	{
+		return FName(*FString::Printf(TEXT("Mining.Site.%s"), *SiteActor.GetName()));
+	}
+}
 
 void UMiningSitePresentationCoordinatorComponent::SyncPresentationActorsForRole(
 	AMiningSiteActor& SiteActor,
@@ -53,6 +62,7 @@ void UMiningSitePresentationCoordinatorComponent::SyncPresentationActorsForRole(
 		FActorSpawnParameters SpawnParameters;
 		SpawnParameters.Owner = &SiteActor;
 		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		SpawnParameters.ObjectFlags |= RF_Transient;
 
 		AActor* SpawnedActor = SiteActor.GetWorld()->SpawnActor<AActor>(LoadedClass, SpawnLocation, SiteActor.GetActorRotation(), SpawnParameters);
 		if (!SpawnedActor)
@@ -138,9 +148,78 @@ void UMiningSitePresentationCoordinatorComponent::SyncCourierPresentationActor(
 		return;
 	}
 
+	AActor* AdoptedCourierActor = nullptr;
+	TArray<AActor*> DuplicateCourierActors;
+	const FName SiteTag = GetMiningSiteTag(SiteActor);
+	for (TActorIterator<AActor> It(SiteActor.GetWorld(), LoadedClass); It; ++It)
+	{
+		AActor* Candidate = *It;
+		if (!Candidate || Candidate->IsPendingKillPending())
+		{
+			continue;
+		}
+
+		const bool bTaggedForThisSite = Candidate->ActorHasTag(SiteTag);
+		const bool bTaggedAsCourier = Candidate->ActorHasTag(TEXT("Mining.Courier"));
+		const bool bNearSite = FVector::DistSquared2D(Candidate->GetActorLocation(), SiteActor.GetActorLocation()) <= FMath::Square(2500.0f);
+		if (!bNearSite || (!bTaggedForThisSite && !bTaggedAsCourier))
+		{
+			continue;
+		}
+
+		if (!AdoptedCourierActor)
+		{
+			AdoptedCourierActor = Candidate;
+		}
+		else
+		{
+			DuplicateCourierActors.Add(Candidate);
+		}
+	}
+
+	for (AActor* DuplicateCourier : DuplicateCourierActors)
+	{
+		ReleaseSmartObjectForActor(DuplicateCourier);
+		PresentationRoutePhaseMap.Remove(DuplicateCourier);
+		PresentationMoveTargetMap.Remove(DuplicateCourier);
+		PresentationSmartObjectLastStatusMap.Remove(DuplicateCourier);
+		PresentationSmartObjectStartTimeMap.Remove(DuplicateCourier);
+		PresentationTargetHoldStartedMap.Remove(DuplicateCourier);
+		ApplyAgentPresentation(DuplicateCourier, EMiningPresentationRole::Courier, EMiningPresentationState::Idle);
+		DuplicateCourier->Destroy();
+	}
+
+	if (AdoptedCourierActor)
+	{
+		SpawnedCourierActor = AdoptedCourierActor;
+		SpawnedCourierActor->SetOwner(&SiteActor);
+		SpawnedCourierActor->Tags.AddUnique(TEXT("Mining.Courier"));
+		SpawnedCourierActor->Tags.AddUnique(SiteTag);
+		if (APawn* SpawnedPawn = Cast<APawn>(SpawnedCourierActor))
+		{
+			if (!SpawnedPawn->GetController())
+			{
+				SpawnedPawn->SpawnDefaultController();
+			}
+		}
+
+		if (!PresentationRoutePhaseMap.Contains(SpawnedCourierActor))
+		{
+			PresentationRoutePhaseMap.Add(SpawnedCourierActor, false);
+		}
+		if (!PresentationTargetHoldStartedMap.Contains(SpawnedCourierActor))
+		{
+			PresentationTargetHoldStartedMap.Add(SpawnedCourierActor, false);
+		}
+
+		ApplyAgentPresentation(SpawnedCourierActor, EMiningPresentationRole::Courier, EMiningPresentationState::Idle);
+		return;
+	}
+
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.Owner = &SiteActor;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	SpawnParameters.ObjectFlags |= RF_Transient;
 
 	SpawnedCourierActor = SiteActor.GetWorld()->SpawnActor<AActor>(LoadedClass, GetPresentationSlotLocation(SiteActor, Distance, AngleOffsetDegrees), SiteActor.GetActorRotation(), SpawnParameters);
 	if (!SpawnedCourierActor)

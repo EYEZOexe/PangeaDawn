@@ -59,6 +59,12 @@ void AMiningSiteChestActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UE_LOG(LogPangeaMiningSiteChest, Log, TEXT("Mining chest BeginPlay. Chest=%s World=%s Location=%s Owner=%s"),
+		*GetNameSafe(this),
+		*GetNameSafe(GetWorld()),
+		*GetActorLocation().ToString(),
+		*GetNameSafe(GetOwner()));
+
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::HandleInteractionBegin);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::HandleInteractionEnd);
 	RefreshLocalInteractionRegistration();
@@ -73,6 +79,13 @@ void AMiningSiteChestActor::BeginPlay()
 
 void AMiningSiteChestActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	UE_LOG(LogPangeaMiningSiteChest, Warning, TEXT("Mining chest EndPlay. Chest=%s World=%s Location=%s Owner=%s Reason=%d"),
+		*GetNameSafe(this),
+		*GetNameSafe(GetWorld()),
+		*GetActorLocation().ToString(),
+		*GetNameSafe(GetOwner()),
+		static_cast<int32>(EndPlayReason));
+
 	for (const TWeakObjectPtr<UACFInteractionComponent>& InteractionComponent : RegisteredInteractionComponents)
 	{
 		if (InteractionComponent.IsValid())

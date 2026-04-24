@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "DataAssets/MiningSiteDefinition.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 
@@ -58,9 +59,84 @@ void AMiningDiscoveryNodeActor::EndPlay(const EEndPlayReason::Type EndPlayReason
 	Super::EndPlay(EndPlayReason);
 }
 
+TArray<UActorComponent*> AMiningDiscoveryNodeActor::GetComponentsToSave_Implementation() const
+{
+	return {};
+}
+
+void AMiningDiscoveryNodeActor::OnLoaded_Implementation()
+{
+	if (!EstablishedSite)
+	{
+		const FTransform ExpectedSiteTransform = SiteSpawnTransform * GetActorTransform();
+		for (TActorIterator<AMiningSiteActor> It(GetWorld()); It; ++It)
+		{
+			AMiningSiteActor* CandidateSite = *It;
+			if (!CandidateSite || !CandidateSite->MiningSiteComponent || CandidateSite->MiningSiteComponent->SiteDefinition != SiteDefinition)
+			{
+				continue;
+			}
+
+			const bool bNearExpectedSite = FVector::DistSquared(CandidateSite->GetActorLocation(), ExpectedSiteTransform.GetLocation()) <= FMath::Square(200.0f);
+			if (!bNearExpectedSite)
+			{
+				continue;
+			}
+
+			EstablishedSite = CandidateSite;
+			break;
+		}
+	}
+
+	RefreshLocalInteractionRegistration();
+
+	if (EstablishedSite && SettlementResourceActor && EstablishedSite->SettlementResourceActor != SettlementResourceActor)
+	{
+		EstablishedSite->SettlementResourceActor = SettlementResourceActor;
+	}
+
+	if (!EstablishedSite)
+	{
+		return;
+	}
+
+	for (const TWeakObjectPtr<UACFInteractionComponent>& InteractionComponent : RegisteredInteractionComponents)
+	{
+		if (InteractionComponent.IsValid())
+		{
+			InteractionComponent->UnregisterInteractable(this);
+			InteractionComponent->RefreshInteractions();
+		}
+	}
+}
+
 bool AMiningDiscoveryNodeActor::CanSetUpSite() const
 {
-	return !EstablishedSite && SiteDefinition && MiningSiteActorClass;
+	return bUnlocked && !EstablishedSite && SiteDefinition && MiningSiteActorClass;
+}
+
+void AMiningDiscoveryNodeActor::SetUnlocked(bool bInUnlocked)
+{
+	if (bUnlocked == bInUnlocked)
+	{
+		return;
+	}
+
+	bUnlocked = bInUnlocked;
+	RefreshLocalInteractionRegistration();
+
+	for (const TWeakObjectPtr<UACFInteractionComponent>& InteractionComponent : RegisteredInteractionComponents)
+	{
+		if (InteractionComponent.IsValid())
+		{
+			InteractionComponent->RefreshInteractions();
+		}
+	}
+
+	UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("Mining discovery unlock state changed. Node=%s Unlocked=%s FacilityTag=%s"),
+		*GetNameSafe(this),
+		bUnlocked ? TEXT("true") : TEXT("false"),
+		*FacilityTag.ToString());
 }
 
 AMiningSiteActor* AMiningDiscoveryNodeActor::SetUpSite()
