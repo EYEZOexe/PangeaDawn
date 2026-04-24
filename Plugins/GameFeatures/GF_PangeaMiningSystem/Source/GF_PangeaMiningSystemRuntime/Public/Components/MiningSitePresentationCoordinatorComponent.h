@@ -15,7 +15,7 @@ class UMiningSiteComponent;
 class USmartObjectComponent;
 
 UCLASS(ClassGroup=(Pangea), BlueprintType, Blueprintable, meta=(BlueprintSpawnableComponent))
-class MININGSYSTEMPRESENTATION_API UMiningSitePresentationCoordinatorComponent : public UActorComponent, public IMiningSitePresentationCoordinatorInterface
+class GF_PANGEAMININGSYSTEMRUNTIME_API UMiningSitePresentationCoordinatorComponent : public UActorComponent, public IMiningSitePresentationCoordinatorInterface
 {
 	GENERATED_BODY()
 
@@ -150,6 +150,7 @@ private:
 	float GetInteractionDurationForActor(const UMiningSiteComponent* MiningSiteComponent, EMiningPresentationRole Role, const AActor* Actor) const;
 	EMiningPresentationState GetActiveStateForRole(EMiningPresentationRole Role) const;
 	void ApplyAgentPresentation(AActor* Actor, EMiningPresentationRole Role, EMiningPresentationState State, const FVector* FocusLocation = nullptr) const;
+	void EnsurePresentationAgentComponent(AActor* Actor) const;
 	const UMiningSitePresentationConfig* GetPresentationConfig(const UMiningSiteComponent* MiningSiteComponent) const;
 	const FMiningPresentationRoleConfig* GetRoleConfig(const UMiningSiteComponent* MiningSiteComponent, EMiningPresentationRole Role) const;
 	bool TryGetConfiguredStationTargets(const AMiningSiteActor& SiteActor, const UMiningSiteComponent* MiningSiteComponent, EMiningPresentationRole Role, int32 StationIndex, FVector& OutPrimaryTarget, FVector& OutSecondaryTarget) const;

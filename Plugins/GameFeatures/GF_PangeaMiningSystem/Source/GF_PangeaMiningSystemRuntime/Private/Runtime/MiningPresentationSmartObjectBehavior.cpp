@@ -12,7 +12,7 @@
 #include "SmartObjectRequestTypes.h"
 #include "SmartObjectSubsystem.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationRuntime, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationSmartObject, Log, All);
 
 bool UMiningSitePresentationCoordinatorComponent::HasSmartObjectInteractionTimedOut(AActor* Actor, float MaxDuration) const
 {
@@ -55,7 +55,7 @@ bool UMiningSitePresentationCoordinatorComponent::TryStartSmartObjectBehavior(AM
 		}
 
 		PresentationSmartObjectLastStatusMap.Add(Actor, NewStatus);
-		UE_LOG(LogPangeaMiningPresentationRuntime, Log, TEXT("Mining site GI status. Site=%s Actor=%s Status=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(Actor), *NewStatus);
+		UE_LOG(LogPangeaMiningPresentationSmartObject, Log, TEXT("Mining site GI status. Site=%s Actor=%s Status=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(Actor), *NewStatus);
 	};
 
 	if (!Actor || !SmartObjectComponent || !SmartObjectComponent->IsSmartObjectEnabled())

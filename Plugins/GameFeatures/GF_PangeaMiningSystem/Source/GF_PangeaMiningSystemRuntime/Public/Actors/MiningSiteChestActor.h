@@ -36,6 +36,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Mining|UI")
 	void OpenChestMenu(APawn* InteractingPawn);
 
+	void ClearActiveChestWidget(UUserWidget* Widget);
+
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Mining|Storage")
 	void ServerWithdrawAllToPawn(APawn* InteractingPawn);
 
@@ -56,8 +58,7 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTextRenderComponent> StatusText;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UUserWidget> ActiveChestWidget;
+	TWeakObjectPtr<UUserWidget> ActiveChestWidget;
 
 	TArray<TWeakObjectPtr<UACFInteractionComponent>> RegisteredInteractionComponents;
 

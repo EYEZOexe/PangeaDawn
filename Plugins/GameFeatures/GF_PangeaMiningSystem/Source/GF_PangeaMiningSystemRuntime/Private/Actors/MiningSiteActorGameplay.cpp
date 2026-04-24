@@ -119,14 +119,14 @@ void AMiningSiteActor::OpenInteractionMenu(APawn* InteractingPawn)
 		return;
 	}
 
-	if (ActiveMenuWidget)
+	if (ActiveMenuWidget.IsValid())
 	{
-		ActiveMenuWidget->RemoveFromParent();
-		ActiveMenuWidget = nullptr;
+		ActiveMenuWidget.Get()->RemoveFromParent();
 	}
+	ActiveMenuWidget = nullptr;
 
 	APlayerController* PlayerController = Cast<APlayerController>(InteractingPawn->GetController());
-	if (!PlayerController)
+	if (!PlayerController || !PlayerController->IsLocalController() || !PlayerController->GetLocalPlayer())
 	{
 		return;
 	}
@@ -143,13 +143,18 @@ void AMiningSiteActor::OpenInteractionMenu(APawn* InteractingPawn)
 	{
 		WidgetClass = LoadClass<UUserWidget>(nullptr, TEXT("/Script/MiningSystemUI.MiningSiteMenuWidget"));
 	}
-	ActiveMenuWidget = CreateWidget<UUserWidget>(PlayerController, WidgetClass);
-	if (!ActiveMenuWidget)
+	if (!WidgetClass)
 	{
 		return;
 	}
 
-	if (UFunction* InitializeFunction = ActiveMenuWidget->FindFunction(TEXT("InitializeFromSite")))
+	ActiveMenuWidget = CreateWidget<UUserWidget>(PlayerController, WidgetClass);
+	if (!ActiveMenuWidget.IsValid())
+	{
+		return;
+	}
+
+	if (UFunction* InitializeFunction = ActiveMenuWidget.Get()->FindFunction(TEXT("InitializeFromSite")))
 	{
 		struct FInitializeFromSiteParams
 		{
@@ -158,12 +163,20 @@ void AMiningSiteActor::OpenInteractionMenu(APawn* InteractingPawn)
 		};
 
 		FInitializeFromSiteParams Params{ this, InteractingPawn };
-		ActiveMenuWidget->ProcessEvent(InitializeFunction, &Params);
+		ActiveMenuWidget.Get()->ProcessEvent(InitializeFunction, &Params);
 	}
 
-	ActiveMenuWidget->AddToViewport();
+	ActiveMenuWidget.Get()->AddToViewport();
 	PlayerController->bShowMouseCursor = true;
 	PlayerController->SetInputMode(FInputModeUIOnly());
+}
+
+void AMiningSiteActor::ClearActiveMenuWidget(UUserWidget* Widget)
+{
+	if (!Widget || ActiveMenuWidget.Get() == Widget)
+	{
+		ActiveMenuWidget = nullptr;
+	}
 }
 
 bool AMiningSiteActor::CanUpgradeFromInteraction(APawn* InteractingPawn) const

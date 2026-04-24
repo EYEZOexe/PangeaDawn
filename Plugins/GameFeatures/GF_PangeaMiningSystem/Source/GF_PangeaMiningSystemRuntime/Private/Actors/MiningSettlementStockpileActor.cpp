@@ -30,7 +30,7 @@ AMiningSettlementStockpileActor::AMiningSettlementStockpileActor()
 	CourierUnloadMarker->SetRelativeLocation(FVector(120.0f, 0.0f, 0.0f));
 
 	StorageComponent = CreateDefaultSubobject<UACFStorageComponent>(TEXT("StorageComponent"));
-	if (StorageComponent)
+	if (StorageComponent != nullptr)
 	{
 		StorageComponent->SetMaxInventorySlots(1000);
 		StorageComponent->SetMaxInventoryWeight(1000000);
@@ -61,17 +61,7 @@ void AMiningSettlementStockpileActor::BeginPlay()
 		}
 	}
 
-	UE_LOG(LogPangeaMiningStockpile, Log, TEXT("Settlement stockpile initialized. Actor=%s ItemStacks=%d"),
-		*GetNameSafe(this),
-		StorageComponent->GetInventory().Num());
-
-	for (const FInventoryItem& Item : StorageComponent->GetInventory())
-	{
-		UE_LOG(LogPangeaMiningStockpile, Log, TEXT("Settlement stockpile item. Actor=%s ItemClass=%s Count=%d"),
-			*GetNameSafe(this),
-			*GetNameSafe(Item.ItemClass.Get()),
-			Item.Count);
-	}
+	UE_LOG(LogPangeaMiningStockpile, Log, TEXT("Settlement stockpile initialized. Actor=%s"), *GetNameSafe(this));
 }
 
 FVector AMiningSettlementStockpileActor::GetCourierUnloadLocation() const

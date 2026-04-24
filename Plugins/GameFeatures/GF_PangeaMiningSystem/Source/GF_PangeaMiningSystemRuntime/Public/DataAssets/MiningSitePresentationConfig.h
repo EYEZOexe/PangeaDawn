@@ -11,7 +11,7 @@ class UAnimSequenceBase;
 class USmartObjectDefinition;
 
 USTRUCT(BlueprintType)
-struct MININGSYSTEMPRESENTATION_API FMiningPresentationStation
+struct GF_PANGEAMININGSYSTEMRUNTIME_API FMiningPresentationStation
 {
 	GENERATED_BODY()
 
@@ -23,7 +23,7 @@ struct MININGSYSTEMPRESENTATION_API FMiningPresentationStation
 };
 
 USTRUCT(BlueprintType)
-struct MININGSYSTEMPRESENTATION_API FMiningPresentationRoleConfig
+struct GF_PANGEAMININGSYSTEMRUNTIME_API FMiningPresentationRoleConfig
 {
 	GENERATED_BODY()
 
@@ -53,7 +53,7 @@ struct MININGSYSTEMPRESENTATION_API FMiningPresentationRoleConfig
 };
 
 UCLASS(BlueprintType)
-class MININGSYSTEMPRESENTATION_API UMiningSitePresentationConfig : public UPrimaryDataAsset
+class GF_PANGEAMININGSYSTEMRUNTIME_API UMiningSitePresentationConfig : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 

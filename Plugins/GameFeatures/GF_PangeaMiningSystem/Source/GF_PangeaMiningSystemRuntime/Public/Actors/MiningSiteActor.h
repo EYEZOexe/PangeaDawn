@@ -51,6 +51,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Mining|UI")
 	void OpenInteractionMenu(APawn* InteractingPawn);
 
+	void ClearActiveMenuWidget(UUserWidget* Widget);
+
 	UFUNCTION(BlueprintPure, Category="Mining")
 	bool CanUpgradeFromInteraction(APawn* InteractingPawn) const;
 
@@ -107,7 +109,7 @@ private:
 	TObjectPtr<USphereComponent> InteractionSphere;
 	TObjectPtr<UTextRenderComponent> StatusText;
 	TArray<TWeakObjectPtr<UACFInteractionComponent>> RegisteredInteractionComponents;
-	TObjectPtr<UUserWidget> ActiveMenuWidget;
+	TWeakObjectPtr<UUserWidget> ActiveMenuWidget;
 	FTimerHandle PresentationRefreshTimerHandle;
 	FTimerHandle PresentationMovementTimerHandle;
 

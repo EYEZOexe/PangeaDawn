@@ -1,12 +1,12 @@
 #include "Components/MiningSitePresentationCoordinatorComponent.h"
 
 #include "Actors/MiningSiteActor.h"
-#include "Components/MiningPresentationAgentComponent.h"
+#include "Components/ActorComponent.h"
 #include "Components/MiningSiteComponent.h"
 #include "DataAssets/MiningSiteDefinition.h"
 #include "DataAssets/MiningSitePresentationConfig.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationRuntime, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationConfigAccess, Log, All);
 
 const UMiningSitePresentationConfig* UMiningSitePresentationCoordinatorComponent::GetPresentationConfig(const UMiningSiteComponent* MiningSiteComponent) const
 {
@@ -53,7 +53,7 @@ void UMiningSitePresentationCoordinatorComponent::EmitValidationWarning(const AM
 	}
 
 	ValidationWarningsIssued.Add(Key);
-	UE_LOG(LogPangeaMiningPresentationRuntime, Warning, TEXT("Mining presentation validation. Site=%s %s"), *GetNameSafe(&SiteActor), *Message);
+	UE_LOG(LogPangeaMiningPresentationConfigAccess, Warning, TEXT("Mining presentation validation. Site=%s %s"), *GetNameSafe(&SiteActor), *Message);
 }
 
 void UMiningSitePresentationCoordinatorComponent::ValidatePresentationSetup(
@@ -128,32 +128,7 @@ void UMiningSitePresentationCoordinatorComponent::ApplyAgentPresentation(AActor*
 		return;
 	}
 
-	UMiningPresentationAgentComponent* AgentComponent = Actor->FindComponentByClass<UMiningPresentationAgentComponent>();
-	if (!AgentComponent)
-	{
-		AgentComponent = NewObject<UMiningPresentationAgentComponent>(Actor, TEXT("MiningPresentationAgentRuntime"));
-		if (AgentComponent)
-		{
-			Actor->AddOwnedComponent(AgentComponent);
-			AgentComponent->RegisterComponent();
-		}
-	}
-
-	if (AgentComponent)
-	{
-		if (const FMiningPresentationRoleConfig* RoleConfig = GetRoleConfig(Cast<AMiningSiteActor>(Actor->GetOwner()) ? Cast<AMiningSiteActor>(Actor->GetOwner())->MiningSiteComponent : nullptr, Role))
-		{
-			AgentComponent->SetTravelSpeedOverride(Role, RoleConfig->TravelSpeed);
-		}
-
-		IMiningPresentationAgentInterface::Execute_SetMiningPresentationRole(AgentComponent, Role);
-		IMiningPresentationAgentInterface::Execute_SetMiningPresentationState(AgentComponent, State);
-		if (FocusLocation)
-		{
-			IMiningPresentationAgentInterface::Execute_SetMiningPresentationFocus(AgentComponent, *FocusLocation);
-		}
-		return;
-	}
+	EnsurePresentationAgentComponent(Actor);
 
 	if (Actor->GetClass()->ImplementsInterface(UMiningPresentationAgentInterface::StaticClass()))
 	{
@@ -163,5 +138,59 @@ void UMiningSitePresentationCoordinatorComponent::ApplyAgentPresentation(AActor*
 		{
 			IMiningPresentationAgentInterface::Execute_SetMiningPresentationFocus(Actor, *FocusLocation);
 		}
+		return;
+	}
+
+	TInlineComponentArray<UActorComponent*> Components(Actor);
+	for (UActorComponent* Component : Components)
+	{
+		if (!Component || !Component->GetClass()->ImplementsInterface(UMiningPresentationAgentInterface::StaticClass()))
+		{
+			continue;
+		}
+
+		IMiningPresentationAgentInterface::Execute_SetMiningPresentationRole(Component, Role);
+		IMiningPresentationAgentInterface::Execute_SetMiningPresentationState(Component, State);
+		if (FocusLocation)
+		{
+			IMiningPresentationAgentInterface::Execute_SetMiningPresentationFocus(Component, *FocusLocation);
+		}
+		return;
+	}
+}
+
+void UMiningSitePresentationCoordinatorComponent::EnsurePresentationAgentComponent(AActor* Actor) const
+{
+	if (!Actor)
+	{
+		return;
+	}
+
+	if (Actor->GetClass()->ImplementsInterface(UMiningPresentationAgentInterface::StaticClass()))
+	{
+		return;
+	}
+
+	TInlineComponentArray<UActorComponent*> Components(Actor);
+	for (UActorComponent* Component : Components)
+	{
+		if (Component && Component->GetClass()->ImplementsInterface(UMiningPresentationAgentInterface::StaticClass()))
+		{
+			return;
+		}
+	}
+
+	static const TCHAR* AgentComponentClassPath = TEXT("/Script/MiningSystemPresentation.MiningPresentationAgentComponent");
+	UClass* AgentComponentClass = LoadClass<UActorComponent>(nullptr, AgentComponentClassPath);
+	if (!AgentComponentClass)
+	{
+		UE_LOG(LogPangeaMiningPresentationConfigAccess, Warning, TEXT("Mining presentation agent component class could not be loaded: %s"), AgentComponentClassPath);
+		return;
+	}
+
+	UActorComponent* NewComponent = Actor->AddComponentByClass(AgentComponentClass, false, FTransform::Identity, false);
+	if (NewComponent)
+	{
+		NewComponent->RegisterComponent();
 	}
 }

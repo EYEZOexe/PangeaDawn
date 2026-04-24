@@ -356,7 +356,7 @@ void AMiningSiteActor::EnsurePresentationCoordinator()
 		return;
 	}
 
-	UClass* CoordinatorClass = LoadClass<UActorComponent>(nullptr, TEXT("/Script/MiningSystemPresentation.MiningSitePresentationCoordinatorComponent"));
+	UClass* CoordinatorClass = LoadClass<UActorComponent>(nullptr, TEXT("/Script/GF_PangeaMiningSystemRuntime.MiningSitePresentationCoordinatorComponent"));
 	if (!CoordinatorClass)
 	{
 		UE_LOG(LogPangeaMiningSiteActor, Warning, TEXT("Failed to load presentation coordinator class. Actor=%s"), *GetNameSafe(this));

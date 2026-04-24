@@ -7,7 +7,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Pawn.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentation, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationActorSync, Log, All);
 
 void UMiningSitePresentationCoordinatorComponent::SyncPresentationActorsForRole(
 	AMiningSiteActor& SiteActor,
@@ -91,14 +91,14 @@ void UMiningSitePresentationCoordinatorComponent::SyncPresentationActorsForRole(
 		if (APawn* SpawnedPawn = Cast<APawn>(SpawnedActor))
 		{
 			SpawnedPawn->SpawnDefaultController();
-			UE_LOG(LogPangeaMiningPresentation, Log, TEXT("Spawned mining pawn controller sync. Site=%s Pawn=%s Controller=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedPawn), *GetNameSafe(SpawnedPawn->GetController()));
+			UE_LOG(LogPangeaMiningPresentationActorSync, Log, TEXT("Spawned mining pawn controller sync. Site=%s Pawn=%s Controller=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedPawn), *GetNameSafe(SpawnedPawn->GetController()));
 		}
 
 		PresentationRoutePhaseMap.Add(SpawnedActor, (SpawnIndex % 2) == 1);
 		PresentationTargetHoldStartedMap.Add(SpawnedActor, false);
 		ApplyAgentPresentation(SpawnedActor, Role, EMiningPresentationState::Idle);
 		ActorArray.Add(SpawnedActor);
-		UE_LOG(LogPangeaMiningPresentation, Log, TEXT("Spawned mining presentation actor. Site=%s Actor=%s Class=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedActor), *GetNameSafe(LoadedClass));
+		UE_LOG(LogPangeaMiningPresentationActorSync, Log, TEXT("Spawned mining presentation actor. Site=%s Actor=%s Class=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedActor), *GetNameSafe(LoadedClass));
 	}
 }
 
@@ -179,11 +179,11 @@ void UMiningSitePresentationCoordinatorComponent::SyncCourierPresentationActor(
 	if (APawn* SpawnedPawn = Cast<APawn>(SpawnedCourierActor))
 	{
 		SpawnedPawn->SpawnDefaultController();
-		UE_LOG(LogPangeaMiningPresentation, Log, TEXT("Spawned mining courier controller sync. Site=%s Pawn=%s Controller=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedPawn), *GetNameSafe(SpawnedPawn->GetController()));
+		UE_LOG(LogPangeaMiningPresentationActorSync, Log, TEXT("Spawned mining courier controller sync. Site=%s Pawn=%s Controller=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedPawn), *GetNameSafe(SpawnedPawn->GetController()));
 	}
 
 	PresentationRoutePhaseMap.Add(SpawnedCourierActor, false);
 	PresentationTargetHoldStartedMap.Add(SpawnedCourierActor, false);
 	ApplyAgentPresentation(SpawnedCourierActor, EMiningPresentationRole::Courier, EMiningPresentationState::Idle);
-	UE_LOG(LogPangeaMiningPresentation, Log, TEXT("Spawned mining courier presentation actor. Site=%s Actor=%s Class=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedCourierActor), *GetNameSafe(LoadedClass));
+	UE_LOG(LogPangeaMiningPresentationActorSync, Log, TEXT("Spawned mining courier presentation actor. Site=%s Actor=%s Class=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(SpawnedCourierActor), *GetNameSafe(LoadedClass));
 }

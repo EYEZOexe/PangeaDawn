@@ -6,7 +6,7 @@
 #include "SmartObjectComponent.h"
 #include "SmartObjectSubsystem.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentation, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationCoordinator, Log, All);
 
 UMiningSitePresentationCoordinatorComponent::UMiningSitePresentationCoordinatorComponent()
 {

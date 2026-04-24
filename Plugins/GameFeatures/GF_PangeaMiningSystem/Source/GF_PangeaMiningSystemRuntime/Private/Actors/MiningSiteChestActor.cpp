@@ -92,14 +92,14 @@ void AMiningSiteChestActor::OpenChestMenu(APawn* InteractingPawn)
 		return;
 	}
 
-	if (ActiveChestWidget)
+	if (ActiveChestWidget.IsValid())
 	{
-		ActiveChestWidget->RemoveFromParent();
-		ActiveChestWidget = nullptr;
+		ActiveChestWidget.Get()->RemoveFromParent();
 	}
+	ActiveChestWidget = nullptr;
 
 	APlayerController* PlayerController = Cast<APlayerController>(InteractingPawn->GetController());
-	if (!PlayerController)
+	if (!PlayerController || !PlayerController->IsLocalController() || !PlayerController->GetLocalPlayer())
 	{
 		return;
 	}
@@ -109,14 +109,18 @@ void AMiningSiteChestActor::OpenChestMenu(APawn* InteractingPawn)
 	{
 		WidgetClass = LoadClass<UUserWidget>(nullptr, TEXT("/Script/MiningSystemUI.MiningSiteChestWidget"));
 	}
-
-	ActiveChestWidget = CreateWidget<UUserWidget>(PlayerController, WidgetClass);
-	if (!ActiveChestWidget)
+	if (!WidgetClass)
 	{
 		return;
 	}
 
-	if (UFunction* InitializeFunction = ActiveChestWidget->FindFunction(TEXT("InitializeFromChest")))
+	ActiveChestWidget = CreateWidget<UUserWidget>(PlayerController, WidgetClass);
+	if (!ActiveChestWidget.IsValid())
+	{
+		return;
+	}
+
+	if (UFunction* InitializeFunction = ActiveChestWidget.Get()->FindFunction(TEXT("InitializeFromChest")))
 	{
 		struct FInitializeFromChestParams
 		{
@@ -125,12 +129,20 @@ void AMiningSiteChestActor::OpenChestMenu(APawn* InteractingPawn)
 		};
 
 		FInitializeFromChestParams Params{ this, InteractingPawn };
-		ActiveChestWidget->ProcessEvent(InitializeFunction, &Params);
+		ActiveChestWidget.Get()->ProcessEvent(InitializeFunction, &Params);
 	}
 
-	ActiveChestWidget->AddToViewport();
+	ActiveChestWidget.Get()->AddToViewport();
 	PlayerController->bShowMouseCursor = true;
 	PlayerController->SetInputMode(FInputModeUIOnly());
+}
+
+void AMiningSiteChestActor::ClearActiveChestWidget(UUserWidget* Widget)
+{
+	if (!Widget || ActiveChestWidget.Get() == Widget)
+	{
+		ActiveChestWidget = nullptr;
+	}
 }
 
 void AMiningSiteChestActor::ServerWithdrawAllToPawn_Implementation(APawn* InteractingPawn)

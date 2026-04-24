@@ -123,6 +123,11 @@ FText UMiningSiteChestWidget::BuildStatusText() const
 
 void UMiningSiteChestWidget::CloseMenu()
 {
+	if (ChestActor)
+	{
+		ChestActor->ClearActiveChestWidget(this);
+	}
+
 	RemoveFromParent();
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(InteractingPawn ? InteractingPawn->GetController() : nullptr))

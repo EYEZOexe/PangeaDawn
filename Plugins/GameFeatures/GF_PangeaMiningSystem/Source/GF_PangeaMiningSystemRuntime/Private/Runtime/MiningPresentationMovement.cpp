@@ -12,7 +12,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationRuntime, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogPangeaMiningPresentationMovement, Log, All);
 
 bool UMiningSitePresentationCoordinatorComponent::HasPresentationHoldActive(AActor* Actor) const
 {
@@ -137,7 +137,7 @@ void UMiningSitePresentationCoordinatorComponent::TryMovePresentationActor(AMini
 								return;
 							}
 
-							UE_LOG(LogPangeaMiningPresentationRuntime, Warning, TEXT("Full-fidelity move request failed. Site=%s Pawn=%s Controller=%s Result=%d Destination=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(PawnCharacter), *GetNameSafe(AIController), static_cast<int32>(MoveResult), *MoveDestination.ToString());
+							UE_LOG(LogPangeaMiningPresentationMovement, Warning, TEXT("Full-fidelity move request failed. Site=%s Pawn=%s Controller=%s Result=%d Destination=%s"), *GetNameSafe(&SiteActor), *GetNameSafe(PawnCharacter), *GetNameSafe(AIController), static_cast<int32>(MoveResult), *MoveDestination.ToString());
 						}
 						else
 						{

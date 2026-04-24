@@ -37,14 +37,7 @@ void AMiningDiscoveryNodeActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("Mining discovery node BeginPlay. Node=%s HasAuthority=%s EstablishedSite=%s Definition=%s SiteClass=%s Settlement=%s Location=%s"),
-		*GetNameSafe(this),
-		HasAuthority() ? TEXT("true") : TEXT("false"),
-		*GetNameSafe(EstablishedSite),
-		*GetNameSafe(SiteDefinition),
-		*GetNameSafe(MiningSiteActorClass.Get()),
-		*GetNameSafe(SettlementResourceActor),
-		*GetActorLocation().ToString());
+	UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("Mining discovery node BeginPlay. Node=%s"), *GetNameSafe(this));
 
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::HandleInteractionBegin);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::HandleInteractionEnd);
@@ -74,20 +67,13 @@ AMiningSiteActor* AMiningDiscoveryNodeActor::SetUpSite()
 {
 	if (EstablishedSite)
 	{
-		UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("SetUpSite skipped. Node=%s already has EstablishedSite=%s"),
-			*GetNameSafe(this),
-			*GetNameSafe(EstablishedSite));
+		UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("SetUpSite skipped. Node=%s"), *GetNameSafe(this));
 		return EstablishedSite;
 	}
 
 	if (!HasAuthority() || !CanSetUpSite())
 	{
-		UE_LOG(LogPangeaMiningDiscovery, Warning, TEXT("SetUpSite blocked. Node=%s HasAuthority=%s EstablishedSite=%s Definition=%s SiteClass=%s"),
-			*GetNameSafe(this),
-			HasAuthority() ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(EstablishedSite),
-			*GetNameSafe(SiteDefinition),
-			*GetNameSafe(MiningSiteActorClass.Get()));
+		UE_LOG(LogPangeaMiningDiscovery, Warning, TEXT("SetUpSite blocked. Node=%s"), *GetNameSafe(this));
 		return nullptr;
 	}
 
@@ -126,13 +112,7 @@ AMiningSiteActor* AMiningDiscoveryNodeActor::SetUpSite()
 			}
 		}
 
-		UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("SetUpSite succeeded. Node=%s Site=%s Definition=%s Settlement=%s SiteSettlement=%s Location=%s"),
-			*GetNameSafe(this),
-			*GetNameSafe(EstablishedSite),
-			*GetNameSafe(SiteDefinition),
-			*GetNameSafe(SettlementResourceActor),
-			*GetNameSafe(NewSite->SettlementResourceActor),
-			*EstablishedSite->GetActorLocation().ToString());
+		UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("SetUpSite succeeded. Node=%s Site=%s"), *GetNameSafe(this), *GetNameSafe(EstablishedSite));
 		return EstablishedSite;
 	}
 
@@ -144,6 +124,7 @@ AMiningSiteActor* AMiningDiscoveryNodeActor::SetUpSite()
 
 void AMiningDiscoveryNodeActor::OnInteractedByPawn_Implementation(APawn* Pawn, const FString& interactionType)
 {
+	(void)interactionType;
 	AMiningSiteActor* NewSite = SetUpSite();
 	UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("Discovery interaction resolved. Node=%s Pawn=%s Result=%s Site=%s"),
 		*GetNameSafe(this),
@@ -154,6 +135,7 @@ void AMiningDiscoveryNodeActor::OnInteractedByPawn_Implementation(APawn* Pawn, c
 
 void AMiningDiscoveryNodeActor::OnLocalInteractedByPawn_Implementation(APawn* Pawn, const FString& interactionType)
 {
+	(void)interactionType;
 	UE_LOG(LogPangeaMiningDiscovery, Log, TEXT("Discovery locally interacted. Node=%s Pawn=%s"),
 		*GetNameSafe(this),
 		*GetNameSafe(Pawn));

@@ -45,6 +45,11 @@ void UMiningSiteMenuWidget::NativeDestruct()
 		World->GetTimerManager().ClearTimer(RefreshTimerHandle);
 	}
 
+	if (SiteActor)
+	{
+		SiteActor->ClearActiveMenuWidget(this);
+	}
+
 	Super::NativeDestruct();
 }
 
@@ -284,6 +289,11 @@ void UMiningSiteMenuWidget::HandleRefreshTick()
 
 void UMiningSiteMenuWidget::CloseMenu()
 {
+	if (SiteActor)
+	{
+		SiteActor->ClearActiveMenuWidget(this);
+	}
+
 	RemoveFromParent();
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(InteractingPawn ? InteractingPawn->GetController() : nullptr))

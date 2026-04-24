@@ -13,6 +13,13 @@ public class GF_PangeaMiningSystemRuntime : ModuleRules
 				// ... add public include paths required here ...
 			}
 			);
+
+		PrivateIncludePaths.AddRange(
+			new string[]
+			{
+				System.IO.Path.Combine(EngineDirectory, "Plugins/Runtime/GameplayInteractions/Source/GameplayInteractionsModule/Private"),
+			}
+			);
 				
 		
 		PublicDependencyModuleNames.AddRange(
@@ -36,7 +43,14 @@ public class GF_PangeaMiningSystemRuntime : ModuleRules
 			new string[]
 			{
 				"AIModule",
+				"GameplayBehaviorSmartObjectsModule",
+				"GameplayInteractionsModule",
+				"GameplayStateTreeModule",
+				"GameplayTasks",
 				"NavigationSystem",
+				"Slate",
+				"SlateCore",
+				"StateTreeModule",
 			}
 			);
 		
